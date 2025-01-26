@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "fileCheck.h"
+#include "headers/fileCheck.h"
 
 int main(){
 	if(isFolderCreated("/home/nomed/Documents/test.txt")){
