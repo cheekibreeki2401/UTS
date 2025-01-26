@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <pwd.h>
 #include <string.h>
 int isFolderCreated(const char* restrict filepath){	
 	FILE *file = fopen(filepath, "r");
