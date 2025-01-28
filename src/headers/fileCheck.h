@@ -1,5 +1,5 @@
 #ifndef _fileCheck_h
 #define _fileCheck_h
-int isFolderCreated(char filepath[]);
+int isFileCreated(char filepath[]);
 
 #endif
