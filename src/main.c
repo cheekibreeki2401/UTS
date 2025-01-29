@@ -32,5 +32,22 @@ int main(){
 			return 1;
 		}
 	}
+	printf("Checking if the main list exists...\n");
+	strcat(utsFilePath, "/main_list.tfo");
+	if(isFileCreated(utsFilePath)){
+		printf("Succesfully found main_list.tfo\n");
+	} else {
+		printf("Have not found the file, creating file now...\n");
+		FILE *main_list = fopen(utsFilePath, "wb");
+		fprintf(main_list, "MAIN\n");
+		fclose(main_list);
+		printf("Checking if file has been created...\n");
+		if(isFileCreated(utsFilePath)){
+			printf("Succesfully created main_list.tfo!\nDo note not to delete this or it will be created again\n");
+		} else {
+			printf("Nope...\n");
+			return 1;
+		}
+	}
 	return 0;
 }
