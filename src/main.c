@@ -4,9 +4,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <ctype.h>
 #include "headers/fileCheck.h"
 #include "headers/folderCheck.h"
 #include "headers/curUser.h"
+
+int menu();
+
+const char MENUCHOICES[]="\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 
 int main(){
 	printf("Welcome to CUTS!\nJust checking to see if you already have a folder for UTS data...\n");
@@ -55,5 +60,26 @@ int main(){
 			return 1;
 		}
 	}
+	menu();
 	return 0;
+}
+
+int menu(){
+	printf("Main Menu: (Note: Currently loaded list is main_list.tfo. %s", MENUCHOICES);
+	char choice;
+	while(toupper(choice) != 'Q'){
+		printf("Enter your choice: ");
+		scanf(" %1c",&choice);
+		if(!isalpha(choice)){
+			printf("\nCould not read a valid choice, please try again\n%s", MENUCHOICES);
+			continue;
+		}
+		if(toupper(choice)=='L'){
+			printf("Reading list\n");
+		}else if(toupper(choice)=='Q'){
+			return 0;
+		} else {
+			printf("Invalid Choice specified, please try again\n%s", MENUCHOICES);
+		}
+	}
 }
