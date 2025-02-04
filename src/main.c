@@ -10,9 +10,10 @@
 #include "headers/curUser.h"
 
 int menu();
+void load_list();
 
 const char MENUCHOICES[]="\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
-char curr_list[256];
+char curr_list[256]="";
 FILE *loaded_list;
 
 int main(){
@@ -49,7 +50,8 @@ int main(){
 	strcat(utsFilePath, "/main_list.tfo");
 	if(isFileCreated(utsFilePath)){
 		printf("Succesfully found main_list.tfo\n");
-		curr_list=utsFilePath;
+		strcpy(curr_list, utsFilePath);
+		loaded_list=fopen(curr_list, "rb");
 	} else {
 		printf("Have not found the file, creating file now...\n");
 		FILE *main_list = fopen(utsFilePath, "wb");
@@ -57,8 +59,8 @@ int main(){
 		fclose(main_list);
 		printf("Checking if file has been created...\n");
 		if(isFileCreated(utsFilePath)){
-			curr_list=utsFilePath;
-			loaded_list = fopen(curr_list, "wb");
+			strcpy(curr_list, utsFilePath);
+			loaded_list = fopen(curr_list, "rb");
 			printf("Succesfully created main_list.tfo!\nDo note not to delete this or it will be created again\n");
 		} else {
 			printf("Nope...\n");
@@ -71,16 +73,17 @@ int main(){
 
 int menu(){
 	printf("Main Menu: (Note: Currently loaded list is main_list.tfo. %s", MENUCHOICES);
-	char choice;
-	while(toupper(choice) != 'Q'){
+	int choice=0;
+	while(choice != 'Q'){
 		printf("Enter your choice: ");
-		scanf(" %1c",&choice);
+		choice=getchar();
 		if(!isalpha(choice)){
 			printf("\nCould not read a valid choice, please try again\n%s", MENUCHOICES);
 			continue;
 		}
 		if(toupper(choice)=='L'){
-			printf("Reading list\n");
+			getchar();
+			load_list();
 		}else if(toupper(choice)=='Q'){
 			fclose(loaded_list);
 			return 0;
@@ -91,7 +94,7 @@ int menu(){
 }
 
 void load_list(){
-	printf("\nPlease enter the file path to a .tfo file:\n");
+	printf("\nPlease enter the file path to a .tfo file: ");
 	char filePath[256];
 	fgets(filePath, 256, stdin);
 	char *point = filePath + strlen(filePath);
@@ -100,8 +103,15 @@ void load_list(){
 			printf("Error: %s does not seem to be a .tfo (Tagging File Object) file, please try again\n%s", filePath, MENUCHOICES);
 		return;	
 		}
+	}else{
+		printf("\nError: Not a filepath, please enter one in\n%s", MENUCHOICES);
+		return;
 	}
-	if(curr_list=filePath){
+	filePath[strcspn(filePath, "\n")] = 0;
+	printf("%s\n", filePath);
+	printf("%s\n", curr_list);
+	printf("%i\n", strcmp(curr_list, filePath));
+	if(strcmp(curr_list, filePath)==0){
 		printf("Already loaded file located at %s.\n%s", filePath, MENUCHOICES);
 		return;
 	}
@@ -109,8 +119,13 @@ void load_list(){
 		printf("Closing current list...\n");
 		fclose(loaded_list);
 		printf("Opening list located at %s...\n", filePath);
-		curr_list = filePath;
-		loaded_list = fopen(curr_list, "wb");
+		strcpy(curr_list, filePath);
+		loaded_list = fopen(curr_list, "rb");
+		return;
+	} else {
+		printf("\nError: %s is not a valid .tfo file. Would you like to make it?\n", filePath);
+		printf("\n%s", MENUCHOICES);
 		return;
 	}
+	printf("We got to the end for some reason...\n");
 }
