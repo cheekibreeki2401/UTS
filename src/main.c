@@ -123,7 +123,31 @@ void load_list(){
 		loaded_list = fopen(curr_list, "rb");
 		return;
 	} else {
-		printf("\nError: %s is not a valid .tfo file. Would you like to make it?\n", filePath);
+		printf("\nError: %s is not a valid .tfo file. Would you like to make it?\n(Y/N): ", filePath);
+		char choice = getchar();
+		while(toupper(choice)!='Y' || toupper(choice)!='N'){
+			getchar();
+			printf("Error: Not a valid choice, please choose type Y or N.\n");
+			printf("Make a new file at %s?: ", filePath);
+			choice = getchar();
+		}
+		if(toupper(choice)=='Y'){
+			fclose(loaded_list);
+			FILE* temp_list = fopen(filePath, "wb");
+			fprintf(temp_list, "NEW LIST\n");
+			fclose(temp_list);
+			if(isFileCreated(filePath)){
+				printf("Succesfully created new list at %s\nLoading list...\n", filePath);
+				strcpy(curr_list, filePath);
+			} else {
+				printf("Could not create list...\n");
+			}
+			getchar();
+			loaded_list = fopen(curr_list, "rb");
+		} else {
+			printf("List not created, defaulting back to %s\n", curr_list);
+			getchar();
+		}
 		printf("\n%s", MENUCHOICES);
 		return;
 	}
