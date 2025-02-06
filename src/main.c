@@ -153,3 +153,27 @@ void load_list(){
 	}
 	printf("We got to the end for some reason...\n");
 }
+
+void editList()
+{
+	char line[256];
+	char edit_options = "\n(A)dd a file to list\n(R)emove a file from the list\n(Q)uit back to main menu\n\nEnter your choice: ";
+	int counter = 1;
+	while(fgets(line, sizeof(line), loaded_list)){
+		printf("%i: %s", counter, line);
+		counter++;
+	}
+	printf("\nList contents loaded successfully, what would you like to do with the contents of the list?\n%s", edit_options);
+	char choice == getchar();
+	while(toupper(choice)!='Q'){
+		if(choice == 'A'){
+			addFile();
+		} else if(choice == 'R'){
+			removeFile();
+		} else {
+			printf("Not a valid choice, please try again\n%s", edit_options);
+		}
+	}
+	getchar();
+	return;
+}
