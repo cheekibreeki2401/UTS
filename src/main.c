@@ -10,7 +10,14 @@
 #include "headers/curUser.h"
 
 int menu();
-void load_list();
+void loadList();
+void editList();
+void addFile();
+void printListContents();
+void removeFile();
+void newTag();
+void deleteTag();
+void renameList();
 
 const char MENUCHOICES[]="\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[256]="";
@@ -77,23 +84,24 @@ int menu(){
 	while(choice != 'Q'){
 		printf("Enter your choice: ");
 		choice=getchar();
+		getchar();
 		if(!isalpha(choice)){
 			printf("\nCould not read a valid choice, please try again\n%s", MENUCHOICES);
 			continue;
 		}
 		if(toupper(choice)=='L'){
-			getchar();
-			load_list();
-		}else if(toupper(choice)=='Q'){
-			fclose(loaded_list);
-			return 0;
-		} else {
+			loadList();
+		}else if(toupper(choice)=='E'){
+			editList();
+		} else if(toupper(choice)!='Q'){
 			printf("Invalid Choice specified, please try again\n%s", MENUCHOICES);
 		}
 	}
+	fclose(loaded_list);
+	return 0;
 }
 
-void load_list(){
+void loadList(){
 	printf("\nPlease enter the file path to a .tfo file: ");
 	char filePath[256];
 	fgets(filePath, 256, stdin);
@@ -108,9 +116,6 @@ void load_list(){
 		return;
 	}
 	filePath[strcspn(filePath, "\n")] = 0;
-	printf("%s\n", filePath);
-	printf("%s\n", curr_list);
-	printf("%i\n", strcmp(curr_list, filePath));
 	if(strcmp(curr_list, filePath)==0){
 		printf("Already loaded file located at %s.\n%s", filePath, MENUCHOICES);
 		return;
@@ -125,7 +130,8 @@ void load_list(){
 	} else {
 		printf("\nError: %s is not a valid .tfo file. Would you like to make it?\n(Y/N): ", filePath);
 		char choice = getchar();
-		while(toupper(choice)!='Y' || toupper(choice)!='N'){
+		while(toupper(choice)!='Y' &&  toupper(choice)!='N'){
+			printf("\n%c", toupper(choice));
 			getchar();
 			printf("Error: Not a valid choice, please choose type Y or N.\n");
 			printf("Make a new file at %s?: ", filePath);
@@ -156,24 +162,79 @@ void load_list(){
 
 void editList()
 {
+	char edit_options [] = "\n(A)dd a file to list\n(R)emove a file from the list\n(I)nsert new tag to file\n(D)elete a tag from a file or list\n(N)ame list\n(Q)uit back to main menu\n\nEnter your choice: ";
+	printf("\nLoading list contents...\n");
+	printListContents();
+	printf("\nList contents loaded successfully\n");
+	printf("\nWhat would you like to do with the contents of the list?\n%s", edit_options);
+	char choice='z';
+	while(toupper(choice)!='Q'){
+		choice=getchar();
+		getchar();
+		if(toupper(choice) == 'A'){
+			addFile();
+		} else if(toupper(choice) == 'R'){
+			removeFile();
+		}else if(toupper(choice) == 'I'){
+			newTag();
+		} else if(toupper(choice)== 'D'){
+			deleteTag();
+		} else if(toupper(choice) == 'N'){
+			renameList();
+		} else if(toupper(choice) != 'Q') {
+			printf("Not a valid choice, please try again\n");
+		}
+		printf("\nWhat would you like to do with the contents of the list?\n%s", edit_options);
+	}
+	printf("\n%s", MENUCHOICES);
+	return;
+}
+
+void addFile(){
+	fclose(loaded_list);
+	loaded_list = fopen(curr_list, "ab");
+	printf("What's the filepath of the new file?: ");
+	char filePath[256];
+	fgets(filePath, 256, stdin);
+	filePath[strcspn(filePath, "\n")] = 0;
+	if(isFileCreated(filePath)){
+		printf("Adding file to current list...");
+		fprintf(loaded_list, strcat(filePath, ", DEFAULTTAG(Will be removed when a tag is given to it)"));
+	} else {
+		printf("Error, could not open file located at this filepath.\n");
+	}
+	fclose(loaded_list);
+	loaded_list = fopen(curr_list, "rb");
+	return;
+}
+
+void printListContents()
+{
 	char line[256];
-	char edit_options = "\n(A)dd a file to list\n(R)emove a file from the list\n(Q)uit back to main menu\n\nEnter your choice: ";
 	int counter = 1;
 	while(fgets(line, sizeof(line), loaded_list)){
 		printf("%i: %s", counter, line);
 		counter++;
 	}
-	printf("\nList contents loaded successfully, what would you like to do with the contents of the list?\n%s", edit_options);
-	char choice == getchar();
-	while(toupper(choice)!='Q'){
-		if(choice == 'A'){
-			addFile();
-		} else if(choice == 'R'){
-			removeFile();
-		} else {
-			printf("Not a valid choice, please try again\n%s", edit_options);
-		}
-	}
-	getchar();
+	return;
+}
+
+void removeFile(){
+	//TODO: Remove file functionality
+	return;
+}
+
+void newTag(){
+	//TODO: New tag functionality
+	return;
+}
+
+void deleteTag(){
+	//TODO: Delete tag functionality
+	return;
+}
+
+void renameList(){
+	//TODO: Rename list functionality
 	return;
 }
