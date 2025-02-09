@@ -37,10 +37,14 @@ void renameList();
 void createListStructs(taggedFile *head, int counter, char line[]);
 int getMaxListIndex(taggedFile *head);
 void removeByIndex(taggedFile *head, int index);
+void writeTextFile();
+void writeBinaryFile();
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
+char curr_txtList[MAX_SIZE]="";
 FILE *loaded_list;
+FILE *loaded_listt;
 
 int main(){
 	printf("Welcome to CUTS!\nJust checking to see if you already have a folder for UTS data...\n");
@@ -77,16 +81,19 @@ int main(){
 	if(isFileCreated(utsFilePath)){
 		printf("Succesfully found main_list.tfo\n");
 		strcpy(curr_list, utsFilePath);
-		loaded_list=fopen(curr_list, "rb");
+		printf("Current list: %s\n", curr_list);
+		writeTextFile();
 	} else {
 		printf("Have not found the file, creating file now...\n");
 		FILE *main_list = fopen(utsFilePath, "wb");
-		fprintf(main_list, "Main\n");
+		char header[MAX_SIZE+2048] = "Main\n";
+		fwrite(header, sizeof(header), 1, main_list);
 		fclose(main_list);
 		printf("Checking if file has been created...\n");
 		if(isFileCreated(utsFilePath)){
 			strcpy(curr_list, utsFilePath);
-			loaded_list = fopen(curr_list, "rb");
+			printf("Current list: %s\n", curr_list);
+			writeTextFile();
 			printf("Succesfully created main_list.tfo!\nDo note not to delete this or it will be created again\n");
 		} else {
 			printf("Nope...\n");
@@ -95,6 +102,60 @@ int main(){
 	}
 	menu();
 	return 0;
+}
+
+void writeTextFile(){
+	if(loaded_list != NULL){
+		fclose(loaded_list);
+	}
+	printf("Current text list: %s\n", curr_txtList);
+	if(remove(curr_txtList)!=0){
+		printf("Error removing a file...\n");
+	}
+	char tmp[MAX_SIZE];
+	strcpy(tmp, curr_list);
+	strcpy(curr_txtList, strcat(tmp, "t"));
+	loaded_list = fopen(curr_list, "rb");
+	loaded_listt = fopen(curr_txtList, "w");
+	char lines[MAX_SIZE+2048];
+	char line[MAX_SIZE+2048];
+	if(loaded_list == NULL){
+		printf("IT'S RIGHT THERE!\n");
+	}
+	while(!feof(loaded_list)){
+		fread(&lines, sizeof(lines), 1, loaded_list);
+		printf("This should have a line: %s\n", lines);
+		if(!feof(loaded_list)){
+			fprintf(loaded_listt, lines);
+		}
+	}
+	fclose(loaded_listt);
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "r");
+	return;
+}
+
+void writeBinaryFile(){
+	fclose(loaded_list);
+	char tmp[MAX_SIZE];
+	printf("Closing and saving: %s\n", curr_list);
+	strcpy(tmp, curr_list);
+	strcat(tmp, "t");
+	strcpy(curr_txtList, tmp);
+	loaded_listt = fopen(curr_txtList, "r");
+	loaded_list = fopen(curr_list, "wb");
+	char line[MAX_SIZE+2048];	
+	while(fgets(line, sizeof(line), loaded_listt)){
+		printf("%s\n", line);
+		fwrite(line, sizeof(line), 1, loaded_list);
+	}
+	fclose(loaded_listt);
+	if(remove(curr_txtList) != 0){
+		printf("DISASTER x2");
+		return;
+	}
+	fclose(loaded_list);
+	return;
 }
 
 int menu(){
@@ -116,7 +177,7 @@ int menu(){
 			printf("Invalid Choice specified, please try again\n%s", MENUCHOICES);
 		}
 	}
-	fclose(loaded_list);
+	writeBinaryFile();
 	return 0;
 }
 
@@ -141,10 +202,9 @@ void loadList(){
 	}
 	if(isFileCreated(filePath)){
 		printf("Closing current list...\n");
-		fclose(loaded_list);
 		printf("Opening list located at %s...\n%s", filePath, MENUCHOICES);
 		strcpy(curr_list, filePath);
-		loaded_list = fopen(curr_list, "rb");
+		writeTextFile();
 		return;
 	} else {
 		printf("\nError: %s is not a valid .tfo file. Would you like to make it?\n(Y/N): ", filePath);
@@ -157,11 +217,9 @@ void loadList(){
 			choice = getchar();
 		}
 		if(toupper(choice)=='Y'){
-			if(loaded_list != NULL){
-				fclose(loaded_list);
-			}
 			FILE* temp_list = fopen(filePath, "wb");
-			fprintf(temp_list, "NEW LIST\n");
+			char line[MAX_SIZE+2048] = "NEW TAGGING FILE\n";
+			fwrite(&line, sizeof(line), 1, temp_list);
 			fclose(temp_list);
 			if(isFileCreated(filePath)){
 				printf("Succesfully created new list at %s\nLoading list...\n", filePath);
@@ -170,7 +228,7 @@ void loadList(){
 				printf("Could not create list...\n");
 			}
 			getchar();
-			loaded_list = fopen(curr_list, "rb");
+			writeTextFile();
 		} else {
 			printf("List not created, defaulting back to %s\n", curr_list);
 			getchar();
@@ -213,7 +271,7 @@ void editList()
 
 void addFile(){
 	fclose(loaded_list);
-	loaded_list = fopen(curr_list, "ab");
+	loaded_list = fopen(curr_txtList, "a");
 	printf("What's the filepath of the new file?: ");
 	char filePath[MAX_SIZE];
 	fgets(filePath, MAX_SIZE, stdin);
@@ -225,15 +283,15 @@ void addFile(){
 		printf("Error, could not open file located at this filepath.\n");
 	}
 	fclose(loaded_list);
-	loaded_list = fopen(curr_list, "rb");
+	loaded_list = fopen(curr_txtList, "r");
 	return;
 }
 
 void printListContents()
 {
 	fclose(loaded_list);
-	loaded_list = fopen(curr_list, "rb");
-	char line[MAX_SIZE];
+	loaded_list = fopen(curr_txtList, "r");
+	char line[MAX_SIZE+2048];
 	int counter = 1;
 	while(fgets(line, sizeof(line), loaded_list)){
 		printf("%i: %s", counter, line);
@@ -245,7 +303,7 @@ void printListContents()
 void removeFile(){
 	//TODO: Remove file functionality
 	fclose(loaded_list);
-	loaded_list = fopen(curr_list, "rb");
+	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head;
 	head=malloc(sizeof(taggedFile));
 	if(head == NULL){
@@ -300,7 +358,7 @@ void removeFile(){
 		getchar();	
 	}
 	fclose(loaded_list);
-	loaded_list = fopen(curr_list, "wb");
+	loaded_list = fopen(curr_txtList, "w");
 	printf("OPEN FOR WRITING!\n");
 	taggedFile *tmp;
 	tmp = head;
@@ -356,7 +414,7 @@ void removeFile(){
 	}
 	fprintf(loaded_list, new_line);
 	fclose(loaded_list);
-	loaded_list = fopen(curr_list, "rb");
+	loaded_list = fopen(curr_txtList, "r");
 	return;
 }
 
