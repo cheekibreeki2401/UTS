@@ -39,6 +39,8 @@ int getMaxListIndex(taggedFile *head);
 void removeByIndex(taggedFile *head, int index);
 void writeTextFile();
 void writeBinaryFile();
+void addTag();
+void flush_chars();
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
@@ -164,7 +166,7 @@ int menu(){
 	while(choice != 'Q'){
 		printf("Enter your choice: ");
 		choice=getchar();
-		getchar();
+		flush_chars();
 		if(!isalpha(choice)){
 			printf("\nCould not read a valid choice, please try again\n%s", MENUCHOICES);
 			continue;
@@ -210,8 +212,7 @@ void loadList(){
 		printf("\nError: %s is not a valid .tfo file. Would you like to make it?\n(Y/N): ", filePath);
 		char choice = getchar();
 		while(toupper(choice)!='Y' &&  toupper(choice)!='N'){
-			printf("\n%c", toupper(choice));
-			getchar();
+			flush_chars();
 			printf("Error: Not a valid choice, please choose type Y or N.\n");
 			printf("Make a new file at %s?: ", filePath);
 			choice = getchar();
@@ -227,11 +228,11 @@ void loadList(){
 			} else {
 				printf("Could not create list...\n");
 			}
-			getchar();
+			flush_chars();
 			writeTextFile();
 		} else {
 			printf("List not created, defaulting back to %s\n", curr_list);
-			getchar();
+			flush_chars();
 		}
 		printf("\n%s", MENUCHOICES);
 		return;
@@ -249,7 +250,7 @@ void editList()
 	char choice='z';
 	while(toupper(choice)!='Q'){
 		choice=getchar();
-		getchar();
+		flush_chars();
 		if(toupper(choice) == 'A'){
 			addFile();
 		} else if(toupper(choice) == 'R'){
@@ -278,7 +279,7 @@ void addFile(){
 	filePath[strcspn(filePath, "\n")] = 0;
 	if(isFileCreated(filePath)){
 		printf("Adding file to current list...");
-		fprintf(loaded_list, strcat(filePath, ", DEFAULTTAG(Will be removed when a tag is given to it)\n"));
+		fprintf(loaded_list, strcat(filePath, ",DEFAULTTAG(Will be removed when a tag is given to it)\n"));
 	} else {
 		printf("Error, could not open file located at this filepath.\n");
 	}
@@ -301,7 +302,6 @@ void printListContents()
 }
 
 void removeFile(){
-	//TODO: Remove file functionality
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head;
@@ -314,7 +314,6 @@ void removeFile(){
 	char line[MAX_SIZE];
 	int counter = 1;
 	while(fgets(line, sizeof(line), loaded_list)){
-		printf("\n%i\n", counter);
 		if(counter == 1){
 			strcpy(head->filePath, line);
 			head->index = counter;
@@ -329,7 +328,6 @@ void removeFile(){
 	}
 	int max_index = getMaxListIndex(head);
 	printListContents();
-	printf("%s\n", head->filePath);
 	int ok_choice = 1;
 	if(max_index == 1){
 		printf("This list has no files...\n");
@@ -338,6 +336,7 @@ void removeFile(){
 	while(ok_choice == 1){
 		printf("Choose index of file to be removed(Use Q to quit): ");
 		char choice = getchar();
+		flush_chars();
 		if(toupper(choice)=='Q'){
 			printf("\nNo files being deleted, leaving...\n");
 			ok_choice = 0;
@@ -349,13 +348,12 @@ void removeFile(){
 			} else if(index == 1){
 				printf("Error, cannot remove the head of this file\n");
 			} else {
-				printf("%s\n", head->filePath);
-				removeByIndex(head, choice);
-				printf("%s\n", head->filePath);
+				removeByIndex(head, index);
 				ok_choice = 0;
 			}
-		}
-		getchar();	
+		} else {
+			printf("\nERROR: Not an index, please choose again\n");
+		}	
 	}
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "w");
@@ -371,6 +369,7 @@ void removeFile(){
 			size--;
 			for(int i=0; i<size; i++){
 				if(tmp->tags[i] == NULL || tmp->tags[i]=="" || i+1>tmp->num_entries){
+					strcat(new_line, "\n");
 					break;
 				}
 				if(i != size-1){
@@ -393,7 +392,7 @@ void removeFile(){
 	free(head);
 	char new_line[MAX_SIZE+2028]="";
 	strcat(new_line, tmp->filePath);
-	strcat(new_line, ", ");
+	strcat(new_line, ",");
 	size_t size = sizeof(tmp->tags)/sizeof(tmp->tags[0]);
 	size--;
 	for(int i=0; i<size; i++){
@@ -438,6 +437,7 @@ void createListStructs(taggedFile *head, int counter, char line[]){
 		if(token_ctr == 1){
 			strcpy(new_file->filePath, token);
 		} else if(token_ctr <= 11) {
+			token[strcspn(token, "\n")] = 0;
 			strcpy(new_file->tags[token_ctr-2], token);
 			new_file->num_entries++;
 		} else {
@@ -462,15 +462,14 @@ int getMaxListIndex(taggedFile *head){
 }
 
 void removeByIndex(taggedFile *head, int index){
-	int nu_index = index-48;
-	if(nu_index < 0){
+	if(index < 0){
 		return;
 	}
 	taggedFile *tmp;
 	tmp = malloc(sizeof(taggedFile));
 	tmp = head;
 	taggedFile *prev = malloc(sizeof(taggedFile));
-	for(int i = 1; tmp != NULL && i < nu_index; i++){
+	for(int i = 1; tmp != NULL && i < index; i++){
 		prev = tmp;
 		tmp = tmp->next_file;
 	}
@@ -486,6 +485,164 @@ void removeByIndex(taggedFile *head, int index){
 
 void newTag(){
 	//TODO: New tag functionality
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "r");
+	taggedFile *head;
+	head=malloc(sizeof(taggedFile));
+	if(head == NULL){
+		printf("ERROR REGARDING CREATING STRUCT\n");
+		return;
+	}
+	head->next_file = NULL;
+	char line[MAX_SIZE];
+	int counter = 1;
+	while(fgets(line, sizeof(line), loaded_list)){
+		if(counter == 1){
+			strcpy(head->filePath, line);
+			head->index = counter;
+					
+		} else {
+			if(line==""){
+				continue;
+			}
+			createListStructs(head, counter, line);
+		}
+		counter++;
+	}
+	int max_index = getMaxListIndex(head);
+	printListContents();
+	int ok_choice = 1;
+	if(max_index == 1){
+		printf("This list has no files...\n");
+		return;
+	}
+	while(ok_choice == 1){
+		printf("\nChoose the index of the file you wish to add a new tag to: ");
+		char choice = getchar();
+		flush_chars();
+		if(toupper(choice) == 'Q'){
+			printf("Appending no files... \n");
+			ok_choice=0;
+		} else if(!isalpha(choice)){
+			int index = (int)choice;
+			index = index-48;
+			if(index <= 0 || index > max_index){
+				printf("\nERROR INVALID CHOICE, PLEASE CHOOSE A DIFFERENT ONE\n");
+			} else if(index == 1){
+				printf("\nError: Head of file does not have any tags\n");
+			} else {
+				addTag(head, index);
+				ok_choice = 0;
+			}
+		} else {
+			printf("\nNot an index, please enter a valid index or type q to quit");
+		}
+	}	
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "w");
+	printf("OPEN FOR WRITING!\n");
+	taggedFile *tmp;
+	tmp = head;
+	while(tmp->next_file != NULL){
+		char new_line[MAX_SIZE+2028]="";
+		strcat(new_line, tmp->filePath);
+		if(tmp->index != 1){	
+			strcat(new_line, ",");
+			size_t size = sizeof(tmp->tags)/sizeof(tmp->tags[0]);
+			size--;
+			for(int i=0; i<size; i++){
+				if(tmp->tags[i] == NULL || tmp->tags[i]=="" || i+1>tmp->num_entries){
+					strcat(new_line, "\n");
+					break;
+				}
+				if(i != size-1){
+					strcat(new_line, tmp->tags[i]);
+					if(i+1 != tmp->num_entries){
+						strcat(new_line, ",");
+					}
+				} else {
+					strcat(new_line, tmp->tags[i]);
+				}
+			}
+			taggedFile *tmp2 = tmp;
+			tmp = tmp->next_file;
+			free(tmp2);
+		} else {
+			tmp = head->next_file;
+		}
+		fprintf(loaded_list, new_line);
+	}
+	free(head);
+	char new_line[MAX_SIZE+2028]="";
+	strcat(new_line, tmp->filePath);
+	strcat(new_line, ",");
+	size_t size = sizeof(tmp->tags)/sizeof(tmp->tags[0]);
+	size--;
+	for(int i=0; i<size; i++){
+		if(tmp->tags[i]==NULL || tmp->tags[i] == "" || i+1>tmp->num_entries){
+			break;
+		}
+		if(i != size){
+			strcat(new_line, tmp->tags[i]);
+			if(i+1 != tmp->num_entries){
+				strcat(new_line, ",");
+			}
+		}else {
+			strcat(new_line, tmp->tags[i]);
+		}
+	}
+	if(tmp != NULL){
+		free(tmp);
+	}
+	fprintf(loaded_list, new_line);
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "r");
+	return;
+}
+
+void addTag(taggedFile *head, int index){
+	taggedFile *tmp;
+	tmp = malloc(sizeof(taggedFile));
+	tmp = head;
+	getchar();
+	for(int i = 1; tmp!=NULL &&  i < index; i++){
+		tmp = tmp->next_file;
+	}
+	if(tmp != NULL){
+		printf("\nTags for %s\n", tmp->filePath);
+		for(int i = 0; i < 10; i++){
+			if(i+1 > tmp->num_entries || tmp->tags[i] == NULL || tmp->tags[i]==""){
+				break;	
+			} else {
+				printf("%i: %s\n", i+1, tmp->tags[i]);
+			}
+		}
+	}
+	if(tmp->num_entries > 9){
+		printf("\nERROR: Cannot add a new tag, maximum tag limit reached, please remove a tag to add a new one\n");
+		return;
+	}
+	int ok_tag = 1;
+	while(ok_tag == 1){
+		printf("Add your new tag: ");
+		char new_tag[256];
+		fgets(new_tag, 256, stdin);
+		new_tag[strcspn(new_tag, "\n")] = 0;
+		if(new_tag == NULL){
+			printf("\nError, no tag entered, please enter in a proper tag\n");
+		} else {
+			ok_tag = 0;
+			printf("%s\n", tmp->tags[0]);
+			printf("New tag for this file will be %s\n", new_tag);
+			if(strcmp(tmp->tags[0],"DEFAULTTAG(Will be removed when a tag is given to it)")==0){
+				strcpy(tmp->tags[0],new_tag);
+			} else {
+				printf("It is doing this because...?\n");
+				strcpy(tmp->tags[tmp->num_entries-1],new_tag);
+				tmp->num_entries++;
+			}
+		}
+	}
 	return;
 }
 
@@ -496,5 +653,13 @@ void deleteTag(){
 
 void renameList(){
 	//TODO: Rename list functionality
+	return;
+}
+
+void flush_chars(){
+	int c;
+	while((c = getchar()) != '\n' && c != EOF){
+
+	}
 	return;
 }
