@@ -365,22 +365,18 @@ void removeFile(){
 		strcat(new_line, tmp->filePath);
 		if(tmp->index != 1){	
 			strcat(new_line, ",");
-			size_t size = sizeof(tmp->tags)/sizeof(tmp->tags[0]);
-			size--;
-			for(int i=0; i<size; i++){
+			for(int i=0; i<tmp->num_entries; i++){
 				if(tmp->tags[i] == NULL || tmp->tags[i]=="" || i+1>tmp->num_entries){
-					strcat(new_line, "\n");
 					break;
 				}
-				if(i != size-1){
+				if(i+1 != tmp->num_entries){
 					strcat(new_line, tmp->tags[i]);
-					if(i+1 != tmp->num_entries){
-						strcat(new_line, ",");
-					}
+					strcat(new_line, ",");
 				} else {
 					strcat(new_line, tmp->tags[i]);
 				}
 			}
+			strcat(new_line, "\n");
 			taggedFile *tmp2 = tmp;
 			tmp = tmp->next_file;
 			free(tmp2);
@@ -393,17 +389,14 @@ void removeFile(){
 	char new_line[MAX_SIZE+2028]="";
 	strcat(new_line, tmp->filePath);
 	strcat(new_line, ",");
-	size_t size = sizeof(tmp->tags)/sizeof(tmp->tags[0]);
-	size--;
-	for(int i=0; i<size; i++){
+	for(int i=0; i<tmp->num_entries; i++){
 		if(tmp->tags[i]==NULL || tmp->tags[i] == "" || i+1>tmp->num_entries){
+			strcat(new_line, "\n");
 			break;
 		}
-		if(i != size){
+		if(i+1 != tmp->num_entries){
 			strcat(new_line, tmp->tags[i]);
-			if(i+1 != tmp->num_entries){
-				strcat(new_line, ",");
-			}
+			strcat(new_line, ",");
 		}else {
 			strcat(new_line, tmp->tags[i]);
 		}
@@ -411,6 +404,7 @@ void removeFile(){
 	if(tmp != NULL){
 		free(tmp);
 	}
+	strcat(new_line, "\n");
 	fprintf(loaded_list, new_line);
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
@@ -548,22 +542,19 @@ void newTag(){
 		strcat(new_line, tmp->filePath);
 		if(tmp->index != 1){	
 			strcat(new_line, ",");
-			size_t size = sizeof(tmp->tags)/sizeof(tmp->tags[0]);
-			size--;
-			for(int i=0; i<size; i++){
+			for(int i=0; i<tmp->num_entries; i++){
 				if(tmp->tags[i] == NULL || tmp->tags[i]=="" || i+1>tmp->num_entries){
 					strcat(new_line, "\n");
 					break;
 				}
-				if(i != size-1){
+				if(i+1 != tmp->num_entries){
 					strcat(new_line, tmp->tags[i]);
-					if(i+1 != tmp->num_entries){
-						strcat(new_line, ",");
-					}
+					strcat(new_line, ",");
 				} else {
 					strcat(new_line, tmp->tags[i]);
 				}
 			}
+			strcat(new_line, "\n");
 			taggedFile *tmp2 = tmp;
 			tmp = tmp->next_file;
 			free(tmp2);
@@ -576,17 +567,13 @@ void newTag(){
 	char new_line[MAX_SIZE+2028]="";
 	strcat(new_line, tmp->filePath);
 	strcat(new_line, ",");
-	size_t size = sizeof(tmp->tags)/sizeof(tmp->tags[0]);
-	size--;
-	for(int i=0; i<size; i++){
+	for(int i=0; i<tmp->num_entries; i++){
 		if(tmp->tags[i]==NULL || tmp->tags[i] == "" || i+1>tmp->num_entries){
 			break;
 		}
-		if(i != size){
+		if(i+1 != tmp->num_entries){
 			strcat(new_line, tmp->tags[i]);
-			if(i+1 != tmp->num_entries){
-				strcat(new_line, ",");
-			}
+			strcat(new_line, ",");
 		}else {
 			strcat(new_line, tmp->tags[i]);
 		}
@@ -594,6 +581,7 @@ void newTag(){
 	if(tmp != NULL){
 		free(tmp);
 	}
+	strcat(new_line, "\n");
 	fprintf(loaded_list, new_line);
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
@@ -637,9 +625,8 @@ void addTag(taggedFile *head, int index){
 			if(strcmp(tmp->tags[0],"DEFAULTTAG(Will be removed when a tag is given to it)")==0){
 				strcpy(tmp->tags[0],new_tag);
 			} else {
-				printf("It is doing this because...?\n");
-				strcpy(tmp->tags[tmp->num_entries-1],new_tag);
 				tmp->num_entries++;
+				strcpy(tmp->tags[tmp->num_entries-1],new_tag);
 			}
 		}
 	}
