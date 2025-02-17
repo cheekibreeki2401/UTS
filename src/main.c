@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -41,6 +42,7 @@ void writeTextFile();
 void writeBinaryFile();
 void addTag();
 void flush_chars();
+void addFileRecursive(char *directory);
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
@@ -273,19 +275,72 @@ void editList()
 void addFile(){
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "a");
-	printf("What's the filepath of the new file?: ");
+	printf("What's the filepath of the new file or directory?: ");
 	char filePath[MAX_SIZE];
 	fgets(filePath, MAX_SIZE, stdin);
 	filePath[strcspn(filePath, "\n")] = 0;
 	if(isFileCreated(filePath)){
-		printf("Adding file to current list...");
-		fprintf(loaded_list, strcat(filePath, ",DEFAULTTAG(Will be removed when a tag is given to it)\n"));
+		if(isFolderCreated(filePath)){
+			printf("Adding directory to current list...");
+			char copyPath[MAX_SIZE];
+			strcpy(copyPath, filePath);
+			fprintf(loaded_list, strcat(copyPath,",dir\n"));
+			printf("\nDo you want to recusively add all files and subdirectories?: ");
+			char choice=getchar();
+			flush_chars();
+			while(toupper(choice) != 'Y' && toupper(choice) != 'N'){
+				printf("\nERROR: Please, type Y or N");
+				printf("\nDo you want to recusively add all files and subdirectories?: ");
+				choice=getchar();
+				flush_chars();
+			}
+			if(toupper(choice) == 'Y'){
+				addFileRecursive(filePath);
+			} else {
+				printf("Returning to edit menu...\n");
+			}
+		} else {
+			printf("Adding file to current list...");
+			fprintf(loaded_list, strcat(filePath, ",file\n"));
+		}
 	} else {
-		printf("Error, could not open file located at this filepath.\n");
+		printf("\n ERROR: NO SUCH FILE OR DIRECTORY, RETURNING TO EDIT...\n");
 	}
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
 	return;
+}
+
+void addFileRecursive(char *directory){
+	struct dirent *entry;
+	printf("%s\n", directory);
+	DIR *dir = opendir(directory);
+	if(dir == NULL){
+		printf("\nError opening directory, unable to reccursively add files\n");
+		return;
+	}
+
+	while((entry = readdir(dir)) != NULL){
+		if(strcmp(entry->d_name, ".")==0 || strcmp(entry->d_name, "..") == 0 || strstr(entry->d_name, ".git") != NULL){
+			continue;
+		}
+		char path[MAX_SIZE];
+		snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
+		char pathToWrite[MAX_SIZE];
+		strcpy(pathToWrite, path);
+		struct stat statbuf;
+		if(stat(path, &statbuf) == 0){
+			if(S_ISDIR(statbuf.st_mode)){
+				printf("\nAdding directory: %s\n", path);
+				fprintf(loaded_list, strcat(pathToWrite, ",dir\n"));
+				addFileRecursive(path);
+			} else {
+				printf("\nAdding directory: %s\n", path);
+				fprintf(loaded_list, strcat(pathToWrite, ",file\n"));
+			}
+		}
+	}
+	closedir(dir);
 }
 
 void printListContents()
