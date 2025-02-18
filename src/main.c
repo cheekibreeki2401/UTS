@@ -43,6 +43,7 @@ void writeBinaryFile();
 void addTag();
 void flush_chars();
 void addFileRecursive(char *directory);
+taggedFile *createHead();
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
@@ -359,28 +360,7 @@ void printListContents()
 void removeFile(){
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
-	taggedFile *head;
-	head=malloc(sizeof(taggedFile));
-	if(head == NULL){
-		printf("ERROR REGARDING CREATING STRUCT\n");
-		return;
-	}
-	head->next_file = NULL;
-	char line[MAX_SIZE];
-	int counter = 1;
-	while(fgets(line, sizeof(line), loaded_list)){
-		if(counter == 1){
-			strcpy(head->filePath, line);
-			head->index = counter;
-					
-		} else {
-			if(line==""){
-				continue;
-			}
-			createListStructs(head, counter, line);
-		}
-		counter++;
-	}
+	taggedFile *head = createHead();
 	int max_index = getMaxListIndex(head);
 	printListContents();
 	int ok_choice = 1;
@@ -466,6 +446,32 @@ void removeFile(){
 	return;
 }
 
+taggedFile *createHead(){
+	static taggedFile *head;
+	head=malloc(sizeof(taggedFile));
+	if(head == NULL){
+		printf("ERROR REGARDING CREATING STRUCT\n");
+		return;
+	}
+	head->next_file = NULL;
+	char line[MAX_SIZE];
+	int counter = 1;
+	while(fgets(line, sizeof(line), loaded_list)){
+		if(counter == 1){
+			strcpy(head->filePath, line);
+			head->index = counter;
+					
+		} else {
+			if(line==""){
+				continue;
+			}
+			createListStructs(head, counter, line);
+		}
+		counter++;
+	}
+	return (&head);
+}
+
 void createListStructs(taggedFile *head, int counter, char line[]){
 	taggedFile *new_file;
 	taggedFile *tmp;
@@ -536,28 +542,7 @@ void newTag(){
 	//TODO: New tag functionality
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
-	taggedFile *head;
-	head=malloc(sizeof(taggedFile));
-	if(head == NULL){
-		printf("ERROR REGARDING CREATING STRUCT\n");
-		return;
-	}
-	head->next_file = NULL;
-	char line[MAX_SIZE];
-	int counter = 1;
-	while(fgets(line, sizeof(line), loaded_list)){
-		if(counter == 1){
-			strcpy(head->filePath, line);
-			head->index = counter;
-					
-		} else {
-			if(line==""){
-				continue;
-			}
-			createListStructs(head, counter, line);
-		}
-		counter++;
-	}
+	taggedFile *head=createHead();
 	int max_index = getMaxListIndex(head);
 	printListContents();
 	int ok_choice = 1;
