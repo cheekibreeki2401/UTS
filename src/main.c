@@ -30,7 +30,7 @@ int menu();
 void loadList();
 void editList();
 void addFile();
-void printListContents();
+void printListContents(int offset);
 void removeFile();
 void newTag();
 void deleteTag();
@@ -44,12 +44,14 @@ void addTag();
 void flush_chars();
 void addFileRecursive(char *directory);
 taggedFile *createHead();
+void addTagReccursive(taggedFile *head, char new_tag[], char filePath[]);
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
 char curr_txtList[MAX_SIZE]="";
 FILE *loaded_list;
 FILE *loaded_listt;
+int curr_list_line_num;
 
 int main(){
 	printf("Welcome to CUTS!\nJust checking to see if you already have a folder for UTS data...\n");
@@ -127,13 +129,15 @@ void writeTextFile(){
 	if(loaded_list == NULL){
 		printf("IT'S RIGHT THERE!\n");
 	}
+	int num_lines = 0;
 	while(!feof(loaded_list)){
 		fread(&lines, sizeof(lines), 1, loaded_list);
-		printf("This should have a line: %s\n", lines);
 		if(!feof(loaded_list)){
 			fprintf(loaded_listt, lines);
+			num_lines++;
 		}
 	}
+	curr_list_line_num = num_lines;
 	fclose(loaded_listt);
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
@@ -151,7 +155,6 @@ void writeBinaryFile(){
 	loaded_list = fopen(curr_list, "wb");
 	char line[MAX_SIZE+2048];	
 	while(fgets(line, sizeof(line), loaded_listt)){
-		printf("%s\n", line);
 		fwrite(line, sizeof(line), 1, loaded_list);
 	}
 	fclose(loaded_listt);
@@ -247,7 +250,7 @@ void editList()
 {
 	char edit_options [] = "\n(A)dd a file to list\n(R)emove a file from the list\n(I)nsert new tag to file\n(D)elete a tag from a file or list\n(N)ame list\n(Q)uit back to main menu\n\nEnter your choice: ";
 	printf("\nLoading list contents...\n");
-	printListContents();
+	printListContents(0);
 	printf("\nList contents loaded successfully\n");
 	printf("\nWhat would you like to do with the contents of the list?\n%s", edit_options);
 	char choice='z';
@@ -309,6 +312,7 @@ void addFile(){
 	}
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
+	curr_list_line_num++;
 	return;
 }
 
@@ -339,20 +343,29 @@ void addFileRecursive(char *directory){
 				printf("\nAdding directory: %s\n", path);
 				fprintf(loaded_list, strcat(pathToWrite, ",file\n"));
 			}
+			curr_list_line_num++;
 		}
 	}
 	closedir(dir);
 }
 
-void printListContents()
+void printListContents(int offset)
 {
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
 	char line[MAX_SIZE+2048];
-	int counter = 1;
-	while(fgets(line, sizeof(line), loaded_list)){
-		printf("%i: %s", counter, line);
+	int counter = 1-offset;
+	while(fgets(line, sizeof(line), loaded_list) &&  counter < 10){
+		if(counter > 0){
+			printf("%i: %s", counter, line);
+		}
 		counter++;
+	}
+	if(offset != 0){
+		printf("<(P)rev\n");
+	}
+	if(counter+offset < curr_list_line_num){
+		printf("(N)ext>\n");
 	}
 	return;
 }
@@ -362,19 +375,32 @@ void removeFile(){
 	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head = createHead();
 	int max_index = getMaxListIndex(head);
-	printListContents();
 	int ok_choice = 1;
+	int curr_page = 0;
 	if(max_index == 1){
 		printf("This list has no files...\n");
 		return;
 	}
 	while(ok_choice == 1){
-		printf("Choose index of file to be removed(Use Q to quit): ");
+		printListContents(curr_page*9);
+		printf("\nChoose index of file to be removed(Use Q to quit): ");
 		char choice = getchar();
 		flush_chars();
 		if(toupper(choice)=='Q'){
 			printf("\nNo files being deleted, leaving...\n");
 			ok_choice = 0;
+		} else if(toupper(choice)=='P'){
+			if(curr_page == 0){
+				printf("Error, on the first page\n");
+				continue;
+			}
+			curr_page--;
+		} else if(toupper(choice)=='N'){
+			if(curr_list_line_num<=(curr_page+1)*9){
+				printf("Error, on the last page\n");
+				continue;
+			}
+			curr_page++;
 		} else if(!isalpha(choice)){;
 			int index = (int)choice;
 			index = index-48;
@@ -383,7 +409,7 @@ void removeFile(){
 			} else if(index == 1){
 				printf("Error, cannot remove the head of this file\n");
 			} else {
-				removeByIndex(head, index);
+				removeByIndex(head, index+(curr_page*9));
 				ok_choice = 0;
 			}
 		} else {
@@ -451,7 +477,7 @@ taggedFile *createHead(){
 	head=malloc(sizeof(taggedFile));
 	if(head == NULL){
 		printf("ERROR REGARDING CREATING STRUCT\n");
-		return;
+		return head;
 	}
 	head->next_file = NULL;
 	char line[MAX_SIZE];
@@ -469,7 +495,7 @@ taggedFile *createHead(){
 		}
 		counter++;
 	}
-	return (&head);
+	return head;
 }
 
 void createListStructs(taggedFile *head, int counter, char line[]){
@@ -486,7 +512,6 @@ void createListStructs(taggedFile *head, int counter, char line[]){
 	new_file->num_entries = 0;
 	char* token = strtok(line, ",");
 	int token_ctr = 1;
-	printf("\n%s\n", token);
 	new_file->index = counter;
 	while(token!=NULL){
 		if(token_ctr == 1){
@@ -506,7 +531,6 @@ void createListStructs(taggedFile *head, int counter, char line[]){
 }
 
 int getMaxListIndex(taggedFile *head){
-	printf("\n%i\n", head->index);
 	taggedFile *tmp;
 	tmp=malloc(sizeof(taggedFile));
 	tmp=head;
@@ -529,8 +553,6 @@ void removeByIndex(taggedFile *head, int index){
 		tmp = tmp->next_file;
 	}
 	if(tmp != NULL){
-		printf("Index to be deleted: %i\n", tmp->index);
-		printf("Previous index: %i\n", prev->index);
 		prev->next_file = tmp->next_file;
 		free(tmp);
 	}
@@ -544,28 +566,41 @@ void newTag(){
 	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head=createHead();
 	int max_index = getMaxListIndex(head);
-	printListContents();
 	int ok_choice = 1;
+	int curr_page = 0;
 	if(max_index == 1){
 		printf("This list has no files...\n");
 		return;
 	}
 	while(ok_choice == 1){
+		printListContents(curr_page*9);
 		printf("\nChoose the index of the file you wish to add a new tag to: ");
 		char choice = getchar();
 		flush_chars();
 		if(toupper(choice) == 'Q'){
 			printf("Appending no files... \n");
 			ok_choice=0;
+		} else if(toupper(choice)=='P'){
+			if(curr_page == 0){
+				printf("Error, on the first page\n");
+				continue;
+			}
+			curr_page--;
+		} else if(toupper(choice)=='N'){
+			if(curr_list_line_num<=(curr_page+1)*9){
+				printf("Error, on the last page\n");
+				continue;
+			}
+			curr_page++;
 		} else if(!isalpha(choice)){
 			int index = (int)choice;
 			index = index-48;
-			if(index <= 0 || index > max_index){
+			if(index <= 0 | index > max_index){
 				printf("\nERROR INVALID CHOICE, PLEASE CHOOSE A DIFFERENT ONE\n");
 			} else if(index == 1){
 				printf("\nError: Head of file does not have any tags\n");
 			} else {
-				addTag(head, index);
+				addTag(head, index+(curr_page*9));
 				ok_choice = 0;
 			}
 		} else {
@@ -646,7 +681,7 @@ void addTag(taggedFile *head, int index){
 			}
 		}
 	}
-	if(tmp->num_entries > 9){
+	if(tmp->num_entries >= 9){
 		printf("\nERROR: Cannot add a new tag, maximum tag limit reached, please remove a tag to add a new one\n");
 		return;
 	}
@@ -660,14 +695,63 @@ void addTag(taggedFile *head, int index){
 			printf("\nError, no tag entered, please enter in a proper tag\n");
 		} else {
 			ok_tag = 0;
-			printf("%s\n", tmp->tags[0]);
 			printf("New tag for this file will be %s\n", new_tag);
-			if(strcmp(tmp->tags[0],"DEFAULTTAG(Will be removed when a tag is given to it)")==0){
-				strcpy(tmp->tags[0],new_tag);
-			} else {
-				tmp->num_entries++;
-				strcpy(tmp->tags[tmp->num_entries-1],new_tag);
+			tmp->num_entries++;
+			strcpy(tmp->tags[tmp->num_entries-1],new_tag);
+		}
+		if(isFolderCreated(tmp->filePath)){
+			char choice;
+			int ok_dir=1;
+			while(ok_dir==1){	
+				printf("\nDo you want to add this new tag to all files and sub-directories in this directory?: ");
+				choice = getchar();
+				flush_chars();
+				if(toupper(choice)!= 'Y' && toupper(choice)!='N'){
+					printf("Please type Y or N\n");
+					continue;
+				} else if (toupper(choice)=='Y'){
+					addTagReccursive(head, new_tag, tmp->filePath);
+					ok_dir=0;
+					printf("Applied tags to all sub-files and directories\n");
+				} else {
+					printf("Applying change to directory only...");
+					ok_dir=0;
+				}
 			}
+		}
+	}
+	return;
+}
+
+void addTagReccursive(taggedFile *head, char new_tag[], char filePath[]){
+	printf("Which calls this\n");
+	taggedFile *tmp = head;
+	printf("%s\n", tmp->next_file->filePath);
+	while(tmp->next_file != NULL){
+		printf("%s\n", tmp->next_file->filePath);
+		if(strstr(tmp->filePath, filePath)!=NULL && strcmp(tmp->filePath, filePath)!=0 && strcmp(tmp->tags[tmp->num_entries-1], new_tag)!=0){
+			if(tmp->num_entries < 9){
+				tmp->num_entries++;
+				strcpy(tmp->tags[tmp->num_entries-1], new_tag);
+				printf("Added tag %s to %s\n", new_tag, tmp->filePath);
+			} else {
+				printf("Cannot add new tag to entry %s, maximum tags reached\n", tmp->filePath);
+			}
+			if(isFolderCreated(tmp->filePath)){
+				addTagReccursive(head, new_tag, tmp->filePath);
+			}
+		}	
+		tmp = tmp->next_file;
+	}
+	if(strstr(tmp->filePath, filePath)!=NULL && strcmp(tmp->filePath, filePath)!=0 && strcmp(tmp->tags[tmp->num_entries-1], new_tag)!=0){
+		if(tmp->num_entries < 9){
+			tmp->num_entries++;
+			strcpy(tmp->tags[tmp->num_entries-1], new_tag);
+		} else {
+			printf("Cannot add new tag to entry %s, maximum tags reached\n", tmp->filePath);
+		}
+		if(isFolderCreated(tmp->filePath)){
+			addTagReccursive(head, new_tag, tmp->filePath);
 		}
 	}
 	return;
@@ -689,4 +773,4 @@ void flush_chars(){
 
 	}
 	return;
-}
+}	
