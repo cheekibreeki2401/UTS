@@ -46,6 +46,9 @@ void addFileRecursive(char *directory);
 taggedFile *createHead();
 void addTagReccursive(taggedFile *head, char new_tag[], char filePath[]);
 void destroyStructs(taggedFile *head);
+void removeTag(taggedFile *head, int index);
+void removeTagList(taggedFile *head, char tag_to_remove[]);
+void removeTagSubDirectories(taggedFile *head, char filePath[], char tag_to_remove[]);
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
@@ -621,7 +624,7 @@ void addTag(taggedFile *head, int index){
 	taggedFile *tmp;
 	tmp = malloc(sizeof(taggedFile));
 	tmp = head;
-	getchar();
+	flush_chars();
 	for(int i = 1; tmp!=NULL &&  i < index; i++){
 		tmp = tmp->next_file;
 	}
@@ -713,6 +716,236 @@ void addTagReccursive(taggedFile *head, char new_tag[], char filePath[]){
 
 void deleteTag(){
 	//TODO: Delete tag functionality
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "r");
+	taggedFile *head = createHead();
+	int max_index = getMaxListIndex(head);
+	int ok_choice = 1;
+	int curr_page = 0;
+	if(max_index == 1){
+		printf("This list has no files...\n");
+		return;
+	}
+	while(ok_choice == 1){
+		printListContents(curr_page*9);
+		printf("\nChoose the index of the file you wish to remove a tag from: ");
+		char choice = getchar();
+		flush_chars();
+		if(toupper(choice) == 'Q'){
+			printf("Removing no tags... \n");
+			ok_choice=0;
+		} else if(toupper(choice)=='P'){
+			if(curr_page == 0){
+				printf("Error, on the first page\n");
+				continue;
+			}
+			curr_page--;
+		} else if(toupper(choice)=='N'){
+			if(curr_list_line_num<=(curr_page+1)*9){
+				printf("Error, on the last page\n");
+				continue;
+			}
+			curr_page++;
+		} else if(!isalpha(choice)){
+			int index = (int)choice;
+			index = index-48;
+			if(index <= 0 | index > max_index){
+				printf("\nERROR INVALID CHOICE, PLEASE CHOOSE A DIFFERENT ONE\n");
+			} else if(index == 1){
+				printf("\nError: Head of file does not have any tags\n");
+			} else {
+				removeTag(head, index+(curr_page*9));
+				ok_choice = 0;
+			}
+		} else {
+			printf("\nNot an index, please enter a valid index or type q to quit");
+		}
+	}
+	destroyStructs(head);	
+	return;
+}
+
+void removeTag(taggedFile *head, int index){
+	taggedFile *tmp;
+	tmp = malloc(sizeof(taggedFile));
+	tmp = head;
+	flush_chars();
+	for(int i = 1; i < index; i++){
+		tmp = tmp->next_file;
+	}
+	if(tmp!= NULL){
+		printf("Tags for %s\n", tmp->filePath);
+		for(int i = 0; i < 10; i++){
+			if(i+1 > tmp->num_entries || tmp->tags[i] == NULL || tmp->tags[i]==""){
+				break;	
+			} else {
+				printf("%i: %s\n", i+1, tmp->tags[i]);
+			}
+		}
+			
+	}
+	int ok_choice = 1;
+	while(ok_choice == 1){
+		printf("\nChoose the index of the tag you want removed (Type Q to quit): ");
+		char choice = getchar();
+		flush_chars();
+		if(toupper(choice) == 'Q'){
+			printf("Leaving without removing any tags...\n");
+			ok_choice = 0;
+		} else if(!isalpha(choice)){
+			int tag_index = (int)choice;
+			tag_index = tag_index - 48;
+			if(tag_index <= 1){
+				printf("Error: Cannot remove identifier tag\n");
+			} else if(tag_index > tmp->num_entries){
+				printf("Error: Not a valid index\n");
+			} else {
+				ok_choice = 0;
+				char tag_to_remove[2048];
+				strcpy(tag_to_remove, tmp->tags[tag_index-1]);
+				for(int i = 0; i < tmp->num_entries; i++){
+					if(i < tag_index-1){
+						continue;
+					} else if(i == tag_index-1){
+						tmp->num_entries--;
+						if(i!=8){
+							strcpy(tmp->tags[i], tmp->tags[i+1]);
+						}
+					} else {
+						if(i != 8){
+							strcpy(tmp->tags[i], tmp->tags[i+1]);	
+						}
+					}
+				}
+				printf("Successfully removed %s from %s\n", tag_to_remove, tmp->filePath);
+				int ok_choice2 = 1;
+				while(ok_choice2 == 1){
+					printf("Do you wish to remove this tag from (S)ubdirectories, the (L)ist or (N)ot?");
+					char choice2 = getchar();
+					flush_chars();
+					if(toupper(choice2) == 'S'){
+						removeTagSubDirectories(head, tmp->filePath, tag_to_remove);
+						ok_choice2 = 0;
+					} else if(toupper(choice2) == 'L'){
+						removeTagList(head, tag_to_remove);
+						ok_choice2 = 0;
+					} else if(toupper(choice2) == 'N'){
+						printf("Returning to edit menu...\n");
+						ok_choice2 = 0;
+					} else {
+						printf("Please provide a valid input of S, L or N\n");
+					}
+				}
+			}
+		} else {
+			printf("NOT A VALID INDEX, PLEASE PROVIDE AN INDEX OR TYPE Q TO QUIT");
+		}
+	}
+	return;
+}
+
+void removeTagSubDirectories(taggedFile *head, char filePath[], char tag_to_remove[]){
+	taggedFile *tmp = malloc(sizeof(taggedFile));
+	tmp = head;
+	while(tmp->next_file != NULL){
+		if(strstr(tmp->filePath, filePath)!=NULL && strcmp(tmp->filePath, filePath)!=0){
+			int hasTag = 0;
+			for(int i = 0; i < tmp->num_entries; i++){
+				if(hasTag == 0){
+					if(strcmp(tmp->tags[i], tag_to_remove)==0){
+						tmp->num_entries--;
+						hasTag = 1;
+						if(i != 8){
+							strcpy(tmp->tags[i], tmp->tags[i+1]);
+						}
+					} else {
+						continue;
+					}
+				} else {
+					if(i != 8){
+						strcpy(tmp->tags[i], tmp->tags[i+1]);
+					}
+				}
+			}
+			
+			if(isFolderCreated(tmp->filePath)){
+				removeTagSubDirectories(head, tmp->filePath, tag_to_remove);
+			}
+		}
+		tmp = tmp->next_file;
+	}
+	if(strstr(tmp->filePath, filePath)!=NULL && strcmp(tmp->filePath, filePath)!=0){
+		int hasTag = 0;
+		for(int i = 0; i < tmp->num_entries; i++){
+			if(hasTag == 0){
+				if(strcmp(tmp->tags[i], tag_to_remove)==0){
+					tmp->num_entries--;
+					hasTag = 1;
+					if(i != 8){
+						strcpy(tmp->tags[i], tmp->tags[i+1]);
+					}
+				} else {
+					continue;
+				}
+			} else {
+				if(i != 8){
+					strcpy(tmp->tags[i], tmp->tags[i+1]);
+				}
+			}
+		}
+	}
+	if(isFolderCreated(tmp->filePath)){
+		removeTagSubDirectories(head, tmp->filePath, tag_to_remove);
+	}
+	return;
+}
+
+void removeTagList(taggedFile *head, char tag_to_remove[]){
+	taggedFile *tmp= malloc(sizeof(taggedFile));
+	tmp = head;
+	while(tmp->next_file != NULL){
+		if(tmp->index == 1){
+			tmp=tmp->next_file;
+			continue;
+		}
+		int hasTag = 0;
+		for(int i = 0; i<tmp->num_entries; i++){
+			if (hasTag == 0){
+				if(strcmp(tmp->tags[i], tag_to_remove)==0){
+					tmp->num_entries--;
+					hasTag = 1;
+					if(i != 8){
+						strcpy(tmp->tags[i], tmp->tags[i+1]);
+					}
+				} else {
+					continue;
+				}
+			} else {
+				if(i != 8){
+					strcpy(tmp->tags[i], tmp->tags[i+1]);
+				}
+			}
+		}
+		tmp=tmp->next_file;
+	}
+	int hasTag = 0;
+	for(int i = 0; i<tmp->num_entries; i++){
+		if (hasTag == 0){
+			if(strcmp(tmp->tags[i], tag_to_remove)==0){
+				tmp->num_entries--;
+				hasTag = 1;
+				if(i != 8){
+					strcpy(tmp->tags[i], tmp->tags[i+1]);
+				}
+			} else {
+				continue;
+			}
+		} else {
+			if(i != 8){
+				strcpy(tmp->tags[i], tmp->tags[i+1]);
+			}
+		}
+	}
 	return;
 }
 
