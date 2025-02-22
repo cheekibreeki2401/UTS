@@ -45,6 +45,7 @@ void flush_chars();
 void addFileRecursive(char *directory);
 taggedFile *createHead();
 void addTagReccursive(taggedFile *head, char new_tag[], char filePath[]);
+void destroyStructs(taggedFile *head);
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
@@ -416,59 +417,7 @@ void removeFile(){
 			printf("\nERROR: Not an index, please choose again\n");
 		}	
 	}
-	fclose(loaded_list);
-	loaded_list = fopen(curr_txtList, "w");
-	printf("OPEN FOR WRITING!\n");
-	taggedFile *tmp;
-	tmp = head;
-	while(tmp->next_file != NULL){
-		char new_line[MAX_SIZE+2028]="";
-		strcat(new_line, tmp->filePath);
-		if(tmp->index != 1){	
-			strcat(new_line, ",");
-			for(int i=0; i<tmp->num_entries; i++){
-				if(tmp->tags[i] == NULL || tmp->tags[i]=="" || i+1>tmp->num_entries){
-					break;
-				}
-				if(i+1 != tmp->num_entries){
-					strcat(new_line, tmp->tags[i]);
-					strcat(new_line, ",");
-				} else {
-					strcat(new_line, tmp->tags[i]);
-				}
-			}
-			strcat(new_line, "\n");
-			taggedFile *tmp2 = tmp;
-			tmp = tmp->next_file;
-			free(tmp2);
-		} else {
-			tmp = head->next_file;
-		}
-		fprintf(loaded_list, new_line);
-	}
-	free(head);
-	char new_line[MAX_SIZE+2028]="";
-	strcat(new_line, tmp->filePath);
-	strcat(new_line, ",");
-	for(int i=0; i<tmp->num_entries; i++){
-		if(tmp->tags[i]==NULL || tmp->tags[i] == "" || i+1>tmp->num_entries){
-			strcat(new_line, "\n");
-			break;
-		}
-		if(i+1 != tmp->num_entries){
-			strcat(new_line, tmp->tags[i]);
-			strcat(new_line, ",");
-		}else {
-			strcat(new_line, tmp->tags[i]);
-		}
-	}
-	if(tmp != NULL){
-		free(tmp);
-	}
-	strcat(new_line, "\n");
-	fprintf(loaded_list, new_line);
-	fclose(loaded_list);
-	loaded_list = fopen(curr_txtList, "r");
+	destroyStructs(head);
 	return;
 }
 
@@ -528,6 +477,63 @@ void createListStructs(taggedFile *head, int counter, char line[]){
 	}
 	return;
 
+}
+
+void destroyStructs(taggedFile *head){
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "w");
+	printf("OPEN FOR WRITING!\n");
+	taggedFile *tmp;
+	tmp = head;
+	while(tmp->next_file != NULL){
+		char new_line[MAX_SIZE+2028]="";
+		strcat(new_line, tmp->filePath);
+		if(tmp->index != 1){	
+			strcat(new_line, ",");
+			for(int i=0; i<tmp->num_entries; i++){
+				if(tmp->tags[i] == NULL || tmp->tags[i]=="" || i+1>tmp->num_entries){
+					strcat(new_line, "\n");
+					break;
+				}
+				if(i+1 != tmp->num_entries){
+					strcat(new_line, tmp->tags[i]);
+					strcat(new_line, ",");
+				} else {
+					strcat(new_line, tmp->tags[i]);
+				}
+			}
+			strcat(new_line, "\n");
+			taggedFile *tmp2 = tmp;
+			tmp = tmp->next_file;
+			free(tmp2);
+		} else {
+			tmp = head->next_file;
+		}
+		fprintf(loaded_list, new_line);
+	}
+	free(head);
+	char new_line[MAX_SIZE+2028]="";
+	strcat(new_line, tmp->filePath);
+	strcat(new_line, ",");
+	for(int i=0; i<tmp->num_entries; i++){
+		if(tmp->tags[i]==NULL || tmp->tags[i] == "" || i+1>tmp->num_entries){
+			break;
+		}
+		if(i+1 != tmp->num_entries){
+			strcat(new_line, tmp->tags[i]);
+			strcat(new_line, ",");
+		}else {
+			strcat(new_line, tmp->tags[i]);
+		}
+	}
+	if(tmp != NULL){
+		free(tmp);
+	}
+	strcat(new_line, "\n");
+	fprintf(loaded_list, new_line);
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "r");
+	return;
 }
 
 int getMaxListIndex(taggedFile *head){
@@ -606,60 +612,8 @@ void newTag(){
 		} else {
 			printf("\nNot an index, please enter a valid index or type q to quit");
 		}
-	}	
-	fclose(loaded_list);
-	loaded_list = fopen(curr_txtList, "w");
-	printf("OPEN FOR WRITING!\n");
-	taggedFile *tmp;
-	tmp = head;
-	while(tmp->next_file != NULL){
-		char new_line[MAX_SIZE+2028]="";
-		strcat(new_line, tmp->filePath);
-		if(tmp->index != 1){	
-			strcat(new_line, ",");
-			for(int i=0; i<tmp->num_entries; i++){
-				if(tmp->tags[i] == NULL || tmp->tags[i]=="" || i+1>tmp->num_entries){
-					strcat(new_line, "\n");
-					break;
-				}
-				if(i+1 != tmp->num_entries){
-					strcat(new_line, tmp->tags[i]);
-					strcat(new_line, ",");
-				} else {
-					strcat(new_line, tmp->tags[i]);
-				}
-			}
-			strcat(new_line, "\n");
-			taggedFile *tmp2 = tmp;
-			tmp = tmp->next_file;
-			free(tmp2);
-		} else {
-			tmp = head->next_file;
-		}
-		fprintf(loaded_list, new_line);
 	}
-	free(head);
-	char new_line[MAX_SIZE+2028]="";
-	strcat(new_line, tmp->filePath);
-	strcat(new_line, ",");
-	for(int i=0; i<tmp->num_entries; i++){
-		if(tmp->tags[i]==NULL || tmp->tags[i] == "" || i+1>tmp->num_entries){
-			break;
-		}
-		if(i+1 != tmp->num_entries){
-			strcat(new_line, tmp->tags[i]);
-			strcat(new_line, ",");
-		}else {
-			strcat(new_line, tmp->tags[i]);
-		}
-	}
-	if(tmp != NULL){
-		free(tmp);
-	}
-	strcat(new_line, "\n");
-	fprintf(loaded_list, new_line);
-	fclose(loaded_list);
-	loaded_list = fopen(curr_txtList, "r");
+	destroyStructs(head);	
 	return;
 }
 
@@ -764,6 +718,25 @@ void deleteTag(){
 
 void renameList(){
 	//TODO: Rename list functionality
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "r");
+	taggedFile *head = createHead();
+	printf("Current list name: %s\n ", head->filePath);
+	int ok_choice = 1;
+	while(ok_choice == 1){
+		printf("What would you like to change the current list's name to? (NOTE: You can type QUIT to exit): ");
+		char new_name[256];
+		fgets(new_name, 256, stdin);
+		if(strcmp(new_name, "QUIT\n")!= 0){
+			printf("Saving the new file name to %s\n", new_name);
+			strcpy(head->filePath, new_name);
+			ok_choice = 0;
+		} else {
+			printf("Keeping the name the same...\n");
+			ok_choice = 0;
+		}
+	}
+	destroyStructs(head);
 	return;
 }
 
