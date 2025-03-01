@@ -49,6 +49,8 @@ void destroyStructs(taggedFile *head);
 void removeTag(taggedFile *head, int index);
 void removeTagList(taggedFile *head, char tag_to_remove[]);
 void removeTagSubDirectories(taggedFile *head, char filePath[], char tag_to_remove[]);
+int* printFilteredListContents(int offset, char filter[][MAX_SIZE]);
+void openList();
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
@@ -185,8 +187,13 @@ int menu(){
 			loadList();
 		}else if(toupper(choice)=='E'){
 			editList();
+		} else if(toupper(choice)=='O'){
+			openList();
+			printf(MENUCHOICES);
 		} else if(toupper(choice)!='Q'){
 			printf("Invalid Choice specified, please try again\n%s", MENUCHOICES);
+		} else {
+			printf("\nClose program. See you!\n");
 		}
 	}
 	writeBinaryFile();
@@ -372,6 +379,39 @@ void printListContents(int offset)
 		printf("(N)ext>\n");
 	}
 	return;
+}
+
+int* printFilteredListContents(int offset, char filter[][MAX_SIZE]){
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "r");
+	char line[MAX_SIZE+2048];
+	int counter = 1-offset;
+	int line_num = 0;
+	int free_pos = 0;
+	int *filtered_index = malloc(10 * sizeof(int));
+	while(fgets(line, sizeof(line), loaded_list) && counter < 10){
+		if(counter > 0){
+			for(int i = 0; i < 9; i++){
+				if(strstr(line, filter[i])!= NULL && filter[i][0] != '\0'){
+					printf("%i: %s", counter, line);
+					counter++;
+					filtered_index[free_pos] = line_num;
+					free_pos++;
+					break;
+				}
+			}
+		} else {
+			counter++;
+		}
+		line_num++;
+	}
+	if(offset != 0){
+		printf("<(P)rev\n");
+	}
+	if(counter+offset < curr_list_line_num && line_num < curr_list_line_num){
+		printf("(N)ext>\n");
+	}
+	return filtered_index;
 }
 
 void removeFile(){
@@ -624,7 +664,6 @@ void addTag(taggedFile *head, int index){
 	taggedFile *tmp;
 	tmp = malloc(sizeof(taggedFile));
 	tmp = head;
-	flush_chars();
 	for(int i = 1; tmp!=NULL &&  i < index; i++){
 		tmp = tmp->next_file;
 	}
@@ -683,9 +722,7 @@ void addTag(taggedFile *head, int index){
 void addTagReccursive(taggedFile *head, char new_tag[], char filePath[]){
 	printf("Which calls this\n");
 	taggedFile *tmp = head;
-	printf("%s\n", tmp->next_file->filePath);
 	while(tmp->next_file != NULL){
-		printf("%s\n", tmp->next_file->filePath);
 		if(strstr(tmp->filePath, filePath)!=NULL && strcmp(tmp->filePath, filePath)!=0 && strcmp(tmp->tags[tmp->num_entries-1], new_tag)!=0){
 			if(tmp->num_entries < 9){
 				tmp->num_entries++;
@@ -769,7 +806,6 @@ void removeTag(taggedFile *head, int index){
 	taggedFile *tmp;
 	tmp = malloc(sizeof(taggedFile));
 	tmp = head;
-	flush_chars();
 	for(int i = 1; i < index; i++){
 		tmp = tmp->next_file;
 	}
@@ -979,4 +1015,68 @@ void flush_chars(){
 
 	}
 	return;
-}	
+}
+
+void openList(){
+	char open_list_options[] = "Opened for review.\n(F)ilter the list based on a tag\n(R)emove filters\n(Q)uit";
+	fclose(loaded_list);
+	loaded_list = fopen(curr_txtList, "r");
+	taggedFile *head = createHead();
+	int hasFilters = 0;
+	int filter_size = 1;
+	char filterList[9][MAX_SIZE];
+	int* index_list = malloc(sizeof(int)*9);
+	int ok_choice = 1;
+	int curr_page = 0;
+	index_list[1] = 0;
+	while(ok_choice == 1){
+		if(hasFilters == 0){
+			printListContents(curr_page*9);
+		} else {
+			index_list = printFilteredListContents(curr_page*9, filterList);
+		}
+		printf("%s\nMake your choice: ", open_list_options);
+		char choice = getchar();
+		flush_chars();
+		if(toupper(choice) == 'F'){
+			printf("\nPlease type in the tag you wish to filter by: ");
+			char new_filter[256];
+			fgets(new_filter, 256, stdin);
+			new_filter[strcspn(new_filter, "\n")] = 0;
+			for(int i = 0; i < 10; i++){
+				if(i-1 < filter_size){
+					strcpy(filterList[i], new_filter);
+					printf(filterList[i]);
+					filter_size++;
+					break;
+				}
+			}
+			printf("Added %s to filter\n", new_filter);
+			hasFilters = 1;
+		}else if(toupper(choice) == 'R'){
+			for(int i = 0; i < 10; i++){
+				filterList[i][0]='\0';
+			}
+			hasFilters = 0;
+			printf("\nRemoved all filters\n");		
+		}else if(toupper(choice) == 'Q'){
+			printf("Exiting list...\n");
+			ok_choice = 0;
+		} else if(toupper(choice)=='P'){
+			if(curr_page == 0){
+				printf("Error, on the first page\n");
+				continue;
+			}
+			curr_page--;
+		} else if(toupper(choice)=='N'){
+			if(curr_list_line_num<=(curr_page+1)*9 || curr_list_line_num <= index_list[1]+9 ){
+				printf("Error, on the last page\n");
+				continue;
+			}
+			curr_page++;
+		}
+	}
+	free(index_list);
+	destroyStructs(head);
+	return;
+}
