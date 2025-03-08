@@ -49,8 +49,9 @@ void destroyStructs(taggedFile *head);
 void removeTag(taggedFile *head, int index);
 void removeTagList(taggedFile *head, char tag_to_remove[]);
 void removeTagSubDirectories(taggedFile *head, char filePath[], char tag_to_remove[]);
-int* printFilteredListContents(int offset, char filter[][MAX_SIZE]);
+int printFilteredListContents(int offset, char filter[][MAX_SIZE]);
 void openList();
+void checkList(taggedFile *head);
 
 const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
@@ -118,10 +119,6 @@ int main(){
 }
 
 void writeTextFile(){
-	if(loaded_list != NULL){
-		fclose(loaded_list);
-	}
-	printf("Current text list: %s\n", curr_txtList);
 	if(remove(curr_txtList)!=0){
 		printf("Error removing a file...\n");
 	}
@@ -220,10 +217,16 @@ void loadList(){
 		return;
 	}
 	if(isFileCreated(filePath)){
+		writeBinaryFile();
 		printf("Closing current list...\n");
-		printf("Opening list located at %s...\n%s", filePath, MENUCHOICES);
+		printf("Opening list located at %s...\n", filePath);
 		strcpy(curr_list, filePath);
 		writeTextFile();
+		printf("Validating list...\n");
+		taggedFile *head = createHead();
+		checkList(head);
+		destroyStructs(head);
+		printf("\n%s", MENUCHOICES);
 		return;
 	} else {
 		printf("\nError: %s is not a valid .tfo file. Would you like to make it?\n(Y/N): ", filePath);
@@ -255,6 +258,81 @@ void loadList(){
 		return;
 	}
 	printf("We got to the end for some reason...\n");
+}
+
+void checkList(taggedFile *head){
+	taggedFile *tmp = head;
+	while(tmp->next_file != NULL){
+		if(tmp->index == 1){
+			tmp = tmp->next_file;
+		} else {
+			if(isFileCreated(tmp->filePath)){
+				tmp = tmp->next_file;
+			} else {
+				int valid_choice=1;
+				while(valid_choice == 1){
+					printf("\nThis file (%s) seems to be missing or the permissions have been changed. (C)hange the file path or (R)emove the element from the list?: ", tmp->filePath);
+					char choice = getchar();
+					flush_chars();
+					if(toupper(choice) == 'C'){
+						printf("\nEnter the new filepath: ");
+						char newFilePath[MAX_SIZE];
+						fgets(newFilePath, MAX_SIZE, stdin);
+						newFilePath[strcspn(newFilePath, "\n")] = 0;
+						if(isFileCreated(newFilePath)){
+							printf("\nSuccessfully updated this entries filepath\n");
+							strcpy(tmp->filePath, newFilePath);
+							tmp = tmp->next_file;
+							valid_choice = 0;
+						} else {
+							printf("\nError, could not open the new filepath, check permissions and if file exists\n");
+						}
+					} else if(toupper(choice) == 'R'){
+						printf("\nRemoving entry from list...\n");
+						int index = tmp->index;
+						tmp = tmp->next_file;
+						removeByIndex(head, index);
+						valid_choice = 0;
+					}
+				}
+			}
+		}
+	}
+	if(tmp->index == 1){
+		printf("Succesfully opened empty list...\n");
+		return;
+	} else {
+		if(isFileCreated(tmp->filePath)){
+			printf("\nSuccessfully validated list\n");
+			return;
+		} else {
+			int valid_choice=1;
+			while(valid_choice == 1){
+				printf("\nThis file (%s) seems to be missing or the permissions have been changed. (C)hange the file path or (R)emove the element from the list?: ", tmp->filePath);
+				char choice = getchar();
+				flush_chars();
+				if(toupper(choice) == 'C'){
+					printf("\nEnter the new filepath: ");
+					char newFilePath[MAX_SIZE];
+					fgets(newFilePath, MAX_SIZE, stdin);
+					newFilePath[strcspn(newFilePath, "\n")] = 0;
+					if(isFileCreated(newFilePath)){
+						printf("\nSuccessfully updated this entries filepath\n");
+						strcpy(tmp->filePath, newFilePath);
+						valid_choice = 0;
+					} else {
+						printf("\nError, could not open the new filepath, check permissions and if file exists\n");
+					}
+				} else if(toupper(choice) == 'R'){
+					printf("\nRemoving entry from list...\n");
+					removeByIndex(head, tmp->index);
+					valid_choice = 0;
+				}
+			}
+			
+		}	
+	}
+	return;
 }
 
 void editList()
@@ -381,37 +459,44 @@ void printListContents(int offset)
 	return;
 }
 
-int* printFilteredListContents(int offset, char filter[][MAX_SIZE]){
+int printFilteredListContents(int offset, char filter[][MAX_SIZE]){
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
 	char line[MAX_SIZE+2048];
 	int counter = 1-offset;
 	int line_num = 0;
 	int free_pos = 0;
-	int *filtered_index = malloc(10 * sizeof(int));
-	while(fgets(line, sizeof(line), loaded_list) && counter < 10){
-		if(counter > 0){
-			for(int i = 0; i < 9; i++){
-				if(strstr(line, filter[i])!= NULL && filter[i][0] != '\0'){
-					printf("%i: %s", counter, line);
-					counter++;
-					filtered_index[free_pos] = line_num;
-					free_pos++;
-					break;
-				}
+	int end_of_filter = 0;
+	char filtered_list[100][MAX_SIZE];
+	while(fgets(line, sizeof(line), loaded_list)){
+		for(int i = 0; i < 9; i++){
+			if(strstr(line, filter[i])!= NULL && filter[i][0] != '\0'){
+				strcpy(filtered_list[free_pos], line);
+				free_pos++;
+				break;
 			}
-		} else {
-			counter++;
 		}
 		line_num++;
 	}
+	for(int i = 0; i < sizeof(filtered_list)/sizeof(filtered_list[0]); i++){
+		if(counter+1 > 0 && counter<10){
+			if(filtered_list[i][0] == '\0' || i == MAX_SIZE){
+				end_of_filter = 1;
+				break;
+			}
+			printf("%i: %s", counter, filtered_list[i]);
+			counter++;
+		} else {
+			counter++;
+		}
+	}	
 	if(offset != 0){
 		printf("<(P)rev\n");
 	}
-	if(counter+offset < curr_list_line_num && line_num < curr_list_line_num){
+	if(end_of_filter != 1){
 		printf("(N)ext>\n");
 	}
-	return filtered_index;
+	return end_of_filter;
 }
 
 void removeFile(){
@@ -720,7 +805,6 @@ void addTag(taggedFile *head, int index){
 }
 
 void addTagReccursive(taggedFile *head, char new_tag[], char filePath[]){
-	printf("Which calls this\n");
 	taggedFile *tmp = head;
 	while(tmp->next_file != NULL){
 		if(strstr(tmp->filePath, filePath)!=NULL && strcmp(tmp->filePath, filePath)!=0 && strcmp(tmp->tags[tmp->num_entries-1], new_tag)!=0){
@@ -757,6 +841,7 @@ void deleteTag(){
 	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head = createHead();
 	int max_index = getMaxListIndex(head);
+	int filter_size = 1;
 	int ok_choice = 1;
 	int curr_page = 0;
 	if(max_index == 1){
@@ -1023,17 +1108,18 @@ void openList(){
 	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head = createHead();
 	int hasFilters = 0;
-	int filter_size = 1;
 	char filterList[9][MAX_SIZE];
-	int* index_list = malloc(sizeof(int)*9);
 	int ok_choice = 1;
 	int curr_page = 0;
-	index_list[1] = 0;
+	int end_of_filter = 0;
+	int filter_size = 1;
 	while(ok_choice == 1){
+		printf("\n");
 		if(hasFilters == 0){
 			printListContents(curr_page*9);
+			end_of_filter = 0;
 		} else {
-			index_list = printFilteredListContents(curr_page*9, filterList);
+			end_of_filter=printFilteredListContents(curr_page*9, filterList);
 		}
 		printf("%s\nMake your choice: ", open_list_options);
 		char choice = getchar();
@@ -1069,14 +1155,13 @@ void openList(){
 			}
 			curr_page--;
 		} else if(toupper(choice)=='N'){
-			if(curr_list_line_num<=(curr_page+1)*9 || curr_list_line_num <= index_list[1]+9 ){
+			if(curr_list_line_num<=(curr_page+1)*9 || end_of_filter != 0){
 				printf("Error, on the last page\n");
 				continue;
 			}
 			curr_page++;
 		}
 	}
-	free(index_list);
 	destroyStructs(head);
 	return;
 }
