@@ -332,6 +332,7 @@ void checkList(taggedFile *head){
 			
 		}	
 	}
+	printf("\nSuccessfully validated list\n");
 	return;
 }
 
@@ -479,7 +480,7 @@ int printFilteredListContents(int offset, char filter[][MAX_SIZE]){
 		line_num++;
 	}
 	for(int i = 0; i < sizeof(filtered_list)/sizeof(filtered_list[0]); i++){
-		if(counter+1 > 0 && counter<10){
+		if(counter > 0 && counter<10){
 			if(filtered_list[i][0] == '\0' || i == MAX_SIZE){
 				end_of_filter = 1;
 				break;
@@ -689,13 +690,13 @@ void removeByIndex(taggedFile *head, int index){
 	if(tmp != NULL){
 		prev->next_file = tmp->next_file;
 		free(tmp);
+		curr_list_line_num--;
 	}
 	return;
 
 }
 
 void newTag(){
-	//TODO: New tag functionality
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head=createHead();
@@ -836,7 +837,6 @@ void addTagReccursive(taggedFile *head, char new_tag[], char filePath[]){
 }
 
 void deleteTag(){
-	//TODO: Delete tag functionality
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head = createHead();
@@ -1071,7 +1071,6 @@ void removeTagList(taggedFile *head, char tag_to_remove[]){
 }
 
 void renameList(){
-	//TODO: Rename list functionality
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");
 	taggedFile *head = createHead();
@@ -1139,12 +1138,15 @@ void openList(){
 			}
 			printf("Added %s to filter\n", new_filter);
 			hasFilters = 1;
+			curr_page = 0;
 		}else if(toupper(choice) == 'R'){
 			for(int i = 0; i < 10; i++){
 				filterList[i][0]='\0';
 			}
 			hasFilters = 0;
-			printf("\nRemoved all filters\n");		
+			curr_page = 0;
+			printf("\nRemoved all filters\n");
+			strcpy(open_list_options, "Opened for review\n(F)ilter the list based on a tag\n(R)emove filters\n(Q)uit");//TODO: Find out what overflows the buffer to force me to do this in the first place.	
 		}else if(toupper(choice) == 'Q'){
 			printf("Exiting list...\n");
 			ok_choice = 0;
