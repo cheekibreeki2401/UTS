@@ -1,5 +1,6 @@
 <h1>UNIVERSAL TAGGING SYSTEM</h1>
 <h2>Things to do</h2>
+
 - [x] Create the Commandline Universal Tagging System (CUTS)
 
 - [ ] Test for windows compatibility
@@ -13,24 +14,14 @@ UTS is a program designed to make the navigation of file systems and finding par
 <h2>How to use</h2>
 <ol>
     <li>Git clone the source folder for your desired version of the UTS. For now, that would be CUTS, which can be done by using this command:
-
         >
         >    git clone https://github.com/cheekibreeki2401/UTS/tree/master/CUTS/src
-        >
-
     </li>
     <li>Use your compiler of choice to compile the c files. The one I have currently tested on gcc with simply using:
-
-        >   gcc *.c -o CUTS
-
+        > gcc main.c curUser.c folderCheck.c fileCheck.c -o CUTS
     </li>
     <li>Run the program of your choice by terminal using:
-
-        >
         >    ./CUTS
-        >
-
     </li>
-
     <li>Follow prompts to start building your lists, simple!</li>
 </ol>
