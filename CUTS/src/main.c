@@ -648,10 +648,10 @@ void destroyStructs(taggedFile *head){
 			free(tmp2);
 		} else {
 			tmp = head->next_file;
+			free(head);
 		}
 		fprintf(loaded_list, new_line);
 	}
-	free(head);
 	char new_line[MAX_SIZE+2028]="";
 	strcat(new_line, tmp->filePath);
 	strcat(new_line, ",");
