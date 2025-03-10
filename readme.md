@@ -3,7 +3,7 @@
 
 - [x] Create the Commandline Universal Tagging System (CUTS)
 
-- [ ] Test for windows compatibility
+- [x] Test for windows compatibility
 
 - [ ] Create a makefile for this program
 

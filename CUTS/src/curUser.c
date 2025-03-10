@@ -2,7 +2,7 @@
 #ifdef __linux__
 	#include <pwd.h>
 #elif _WIN32
-	#include <Windows.h>
+	#include <windows.h>
 #endif
 #include <unistd.h>
 #include <sys/types.h>

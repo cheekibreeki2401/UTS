@@ -81,7 +81,11 @@ int main(){
 		printf("Folder has been found!\n");
 	} else {
 		printf("No folder has been created yet...\nCreating one now!\n");
-		mkdir(utsFilePath, 0700);
+		#ifdef __linux__
+			mkdir(utsFilePath, 0700);
+		#elif _WIN32
+			mkdir(utsFilePath);
+		#endif
 		printf("Checking that worked...\n");
 		if(isFolderCreated(utsFilePath)){
 			printf("Succesfully Created!\n");
