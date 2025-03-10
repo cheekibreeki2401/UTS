@@ -468,14 +468,21 @@ int printFilteredListContents(int offset, char filter[][MAX_SIZE]){
 	int line_num = 0;
 	int free_pos = 0;
 	int end_of_filter = 0;
-	char filtered_list[100][MAX_SIZE];
+	char filtered_list[250][MAX_SIZE];
 	while(fgets(line, sizeof(line), loaded_list)){
+		int has_filters = 1;
 		for(int i = 0; i < 9; i++){
-			if(strstr(line, filter[i])!= NULL && filter[i][0] != '\0'){
-				strcpy(filtered_list[free_pos], line);
-				free_pos++;
+			if(filter[i][0] == '\0'){
 				break;
 			}
+			if(strstr(line, filter[i])== NULL){
+				has_filters = 0;
+				break;
+			}
+		}
+		if(has_filters==1){
+			strcpy(filtered_list[free_pos], line);
+			free_pos++;
 		}
 		line_num++;
 	}
