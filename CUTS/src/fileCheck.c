@@ -4,7 +4,7 @@
 #include <dirent.h>
 int isFileCreated(const char* restrict filepath){
 	FILE *file = fopen(filepath, "rb");
-	DIR *dir = opendir(directory);
+	DIR *dir = opendir(filepath);
 	if(file == NULL){
 		if(dir){
 			closedir(dir);

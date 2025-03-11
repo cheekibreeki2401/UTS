@@ -424,8 +424,13 @@ void addFileRecursive(char *directory){
 			continue;
 		}
 		char path[MAX_SIZE];
-		snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
+		#ifdef __linux__
+			snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
+		#elif _WIN32
+			snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
+		#endif
 		char pathToWrite[MAX_SIZE];
+		printf("%s\n%s\n%s", directory, entry->d_name, pathToWrite);
 		strcpy(pathToWrite, path);
 		struct stat statbuf;
 		if(stat(path, &statbuf) == 0){
