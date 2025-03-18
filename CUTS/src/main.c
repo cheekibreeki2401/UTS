@@ -59,6 +59,7 @@ char curr_txtList[MAX_SIZE]="";
 FILE *loaded_list;
 FILE *loaded_listt;
 int curr_list_line_num;
+const int MAX_ENTRIES = 250;
 
 int main(){
 	printf("Welcome to CUTS!\nJust checking to see if you already have a folder for UTS data...\n");
@@ -377,6 +378,13 @@ void addFile(){
 	char filePath[MAX_SIZE];
 	fgets(filePath, MAX_SIZE, stdin);
 	filePath[strcspn(filePath, "\n")] = 0;
+	if(strlen(filePath) > MAX_SIZE){
+		printf("Error, size of filepath is longer than %i characters and is thus discarded, returning to edit\n");
+		return;
+	}
+	if(curr_list_line_num == MAX_ENTRIES){
+		printf("Error, max size of elements reached, discarding file, returning to edit\n");
+	}
 	if(isFileCreated(filePath)){
 		if(isFolderCreated(filePath)){
 			printf("Adding directory to current list...");
@@ -416,6 +424,11 @@ void addFileRecursive(char *directory){
 	DIR *dir = opendir(directory);
 	if(dir == NULL){
 		printf("\nError opening directory, unable to reccursively add files\n");
+		return;
+	}
+	if(curr_list_line_num == MAX_ENTRIES){
+		printf("Cannot add anymore entries to this list\n");
+		closedir(dir);
 		return;
 	}
 
