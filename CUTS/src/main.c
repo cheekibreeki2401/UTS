@@ -53,7 +53,7 @@ int printFilteredListContents(int offset, char filter[][MAX_SIZE]);
 void openList();
 void checkList(taggedFile *head);
 
-const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(O)pen list\n(Q)uit CUTS\n";
+const char MENUCHOICES[]="\nMAIN MENU:\n(L)oad a list\n(E)dit current list\n(D)elete list\n(V)iew list\n(Q)uit CUTS\n";
 char curr_list[MAX_SIZE]="";
 char curr_txtList[MAX_SIZE]="";
 FILE *loaded_list;
@@ -189,7 +189,7 @@ int menu(){
 			loadList();
 		}else if(toupper(choice)=='E'){
 			editList();
-		} else if(toupper(choice)=='O'){
+		} else if(toupper(choice)=='V'){
 			openList();
 			printf(MENUCHOICES);
 		} else if(toupper(choice)!='Q'){
