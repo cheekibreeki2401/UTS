@@ -60,6 +60,7 @@ FILE *loaded_list;
 FILE *loaded_listt;
 int curr_list_line_num;
 const int MAX_ENTRIES = 250;
+char main_static[MAX_SIZE];
 
 int main(){
 	printf("Welcome to CUTS!\nJust checking to see if you already have a folder for UTS data...\n");
@@ -100,6 +101,7 @@ int main(){
 	if(isFileCreated(utsFilePath)){
 		printf("Succesfully found main_list.tfo\n");
 		strcpy(curr_list, utsFilePath);
+		strcpy(main_static, utsFilePath);
 		printf("Current list: %s\n", curr_list);
 		writeTextFile();
 	} else {
@@ -111,6 +113,7 @@ int main(){
 		printf("Checking if file has been created...\n");
 		if(isFileCreated(utsFilePath)){
 			strcpy(curr_list, utsFilePath);
+			strcpy(main_static, utsFilePath);
 			printf("Current list: %s\n", curr_list);
 			writeTextFile();
 			printf("Succesfully created main_list.tfo!\nDo note not to delete this or it will be created again\n");
@@ -189,6 +192,19 @@ int menu(){
 			loadList();
 		}else if(toupper(choice)=='E'){
 			editList();
+		} else if(toupper(choice)=='D'){
+			printf("%s\n%s\n", curr_list, main_static);
+			if(strcmp(curr_list, main_static)){
+				writeBinaryFile();
+				if(remove(curr_list)!=0){
+					printf("Major error\n");
+				}
+				strcpy(curr_list, main_static);
+				writeTextFile();
+				printf("Removed file, returning to main.tfo\n%s", MENUCHOICES);
+			} else {
+				printf("Cannot remove main file, returning... \n%s", MENUCHOICES);
+			}
 		} else if(toupper(choice)=='V'){
 			openList();
 			printf(MENUCHOICES);

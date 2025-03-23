@@ -24,7 +24,9 @@ char curr_txtList[MAX_SIZE]="";
 FILE *loaded_list;
 FILE *loaded_listt;
 int curr_list_line_num;
+char *listContents;
 const int MAX_ENTRIES = 250;
+Ihandle *dlg, *button,  *vbox, *heading, *list_contents, *list_scroll, *item_open, *file_menu, *sub1_menu, *menu;
 
 char *returnListEntries(){
 	if(loaded_list != NULL){
@@ -32,7 +34,9 @@ char *returnListEntries(){
 	}
 	loaded_list = fopen(curr_txtList, "r");
 	char line[MAX_SIZE+2048];
-	char *list = malloc((MAX_SIZE+2048)*MAX_ENTRIES+1);
+	char *list = malloc((MAX_SIZE+2048)*MAX_ENTRIES);
+	*list = '\0';
+	printf("%s\n", list);
 	while(fgets(line, sizeof(line), loaded_list)){
 		strcat(list, line);
 	}
@@ -41,7 +45,7 @@ char *returnListEntries(){
 
 void writeTextFile(){
 	if(remove(curr_txtList)!=0){
-		printf("Error removing");
+		printf("Error removing\n");
 	}
 	char tmp[MAX_SIZE];
 	strcpy(tmp, curr_list);
@@ -93,8 +97,30 @@ int btn_get_curr_user(Ihandle *self){
 	return IUP_CLOSE;
 }
 
+int btn_open_file(Ihandle *self){
+	Ihandle *filedlg;
+	filedlg= IupFileDlg();
+	IupSetAttributes(filedlg, "DIALOGTYPE=OPEN, TITLE=\"Open .tfo file\"");
+	IupSetAttributes(filedlg, "FILTER=\"*.tfo\", FILTERINFO=\"Tagged File Output Files\"");
+	IupPopup(filedlg, IUP_CENTER, IUP_CENTER);
+	switch(IupGetInt(filedlg, "STATUS")){
+		case 0:
+			writeBinaryFile();
+			strcpy(curr_list, IupGetAttribute(filedlg, "VALUE"));
+			printf("Current list: %s\n", curr_list);
+			writeTextFile();
+			listContents = returnListEntries();
+			break;
+		default:
+			break;
+	}
+	IupSetAttribute(list_contents, "TITLE", listContents);
+	IupMap(dlg);
+	IupDestroy(filedlg);
+	return IUP_DEFAULT;
+}
+
 int main (int argc, char **argv){
-	Ihandle *dlg, *button,  *vbox, *heading, *list_contents, *list_scroll;
 	char utsFilePath[MAX_SIZE]="";
 	printf("Finding main file...\n");
 	#ifdef __linux__
@@ -146,25 +172,33 @@ int main (int argc, char **argv){
 	}
 	printf("Getting lis contents...\n");
 	printf("%s\n", curr_list);	
-	char *listContents = returnListEntries();
+	listContents = returnListEntries();
 	printf("Starting GUI\n");
 	IupOpen(&argc, &argv);
 	heading = IupLabel("Welcome to GUTS, choose your options:");
 	list_contents = IupLabel(listContents);
 	list_scroll = IupScrollBox(list_contents);
+	item_open = IupItem("Open", NULL);
+	IupSetAttribute(item_open, "KEY", "O");
+	file_menu = IupMenu(item_open, NULL);
+	sub1_menu = IupSubmenu("File", file_menu);
+	menu = IupMenu(sub1_menu, NULL);
+	IupSetHandle("main_menu", menu);
 	button = IupButton("Get current user name", NULL);
 	vbox=IupVbox(heading, list_scroll, button, NULL);
 	dlg=IupDialog(vbox);
+	IupSetAttribute(dlg, "MENU", "main_menu");
 	IupSetAttribute(dlg, "TITLE", "GUTS");
-	IupSetAttribute(dlg, "SIZE", "QUARTERxQUARTER");
+	IupSetAttribute(dlg, "SIZE", "FULLxFULL");
 	IupSetAttribute(vbox, "ALIGNMENT", "ACENTER");
 	IupSetAttribute(vbox, "GAP", "10");
 	IupSetAttribute(vbox, "MARGIN", "10x10");
+	IupSetCallback(item_open, "ACTION", (Icallback) btn_open_file);
 	IupSetCallback(button, "ACTION", (Icallback) btn_get_curr_user);
 	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);
 	IupMainLoop();
 	IupClose();
 	writeBinaryFile();
-	free(list_contents);
+	free(listContents);
 	return EXIT_SUCCESS;
 }
