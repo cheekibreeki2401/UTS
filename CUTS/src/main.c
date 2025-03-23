@@ -622,6 +622,10 @@ taggedFile *createHead(){
 }
 
 void createListStructs(taggedFile *head, int counter, char line[]){
+	if(curr_list_line_num == 1){
+		head->next_file=NULL;
+		return;
+	}
 	taggedFile *new_file;
 	taggedFile *tmp;
 	tmp=malloc(sizeof(taggedFile));
@@ -687,23 +691,27 @@ void destroyStructs(taggedFile *head){
 		fprintf(loaded_list, new_line);
 	}
 	char new_line[MAX_SIZE+2028]="";
-	strcat(new_line, tmp->filePath);
-	strcat(new_line, ",");
-	for(int i=0; i<tmp->num_entries; i++){
-		if(tmp->tags[i]==NULL || tmp->tags[i] == "" || i+1>tmp->num_entries){
-			break;
+		if(curr_list_line_num != 1){
+		strcat(new_line, tmp->filePath);
+		strcat(new_line, ",");
+		for(int i=0; i<tmp->num_entries; i++){
+			if(tmp->tags[i]==NULL || tmp->tags[i] == "" || i+1>tmp->num_entries){
+				break;
+			}
+			if(i+1 != tmp->num_entries){
+				strcat(new_line, tmp->tags[i]);
+				strcat(new_line, ",");
+			}else {
+				strcat(new_line, tmp->tags[i]);
+			}
 		}
-		if(i+1 != tmp->num_entries){
-			strcat(new_line, tmp->tags[i]);
-			strcat(new_line, ",");
-		}else {
-			strcat(new_line, tmp->tags[i]);
-		}
+			strcat(new_line, "\n");
+	} else {
+		strcat(new_line, tmp->filePath);
 	}
 	if(tmp != NULL){
 		free(tmp);
 	}
-	strcat(new_line, "\n");
 	fprintf(loaded_list, new_line);
 	fclose(loaded_list);
 	loaded_list = fopen(curr_txtList, "r");

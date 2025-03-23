@@ -26,21 +26,51 @@ FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
 const int MAX_ENTRIES = 250;
-Ihandle *dlg, *button,  *vbox, *heading, *list_contents, *list_scroll, *item_open, *file_menu, *sub1_menu, *menu;
+Ihandle *dlg, *button,  *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu;
 
-char *returnListEntries(){
+typedef struct{
+	Ihandle **toggles;
+	int count;
+	Ihandle *list_container;
+	Ihandle *vbox;
+}ToggleManager;
+
+ToggleManager tm = {0};
+
+void returnListEntries(){
 	if(loaded_list != NULL){
 		fclose(loaded_list);	
 	}
+	if(tm.toggles){
+		for(int i=0; i< tm.count; i++){
+			IupDetach(tm.toggles[i]);
+			IupDestroy(tm.toggles[i]);
+		}
+	}
+	tm.toggles=malloc(curr_list_line_num * sizeof(Ihandle *));
+	tm.count = curr_list_line_num;
 	loaded_list = fopen(curr_txtList, "r");
 	char line[MAX_SIZE+2048];
-	char *list = malloc((MAX_SIZE+2048)*MAX_ENTRIES);
-	*list = '\0';
-	printf("%s\n", list);
+	int counter = 0;
 	while(fgets(line, sizeof(line), loaded_list)){
-		strcat(list, line);
+		line[strcspn(line, "\n")] = 0;
+		if(counter == 0){
+			list_head = IupLabel(line);
+		} else {
+			tm.toggles[counter-1] = IupToggle(line, NULL);
+			IupAppend(tm.vbox, tm.toggles[counter-1]);
+			printf("%s\n", IupGetAttribute(tm.toggles[counter-1], "TITLE"));
+			IupMap(tm.toggles[counter-1]);
+		}
+		counter++;
 	}
-	return list;
+	IupMap(tm.vbox);
+	IupRefresh(tm.vbox);
+	IupMap(tm.list_container);
+	IupRefresh(tm.list_container);
+	IupMap(dlg);
+	IupRefresh(dlg);
+	return;
 }
 
 void writeTextFile(){
@@ -109,13 +139,11 @@ int btn_open_file(Ihandle *self){
 			strcpy(curr_list, IupGetAttribute(filedlg, "VALUE"));
 			printf("Current list: %s\n", curr_list);
 			writeTextFile();
-			listContents = returnListEntries();
+			returnListEntries();
 			break;
 		default:
 			break;
 	}
-	IupSetAttribute(list_contents, "TITLE", listContents);
-	IupMap(dlg);
 	IupDestroy(filedlg);
 	return IUP_DEFAULT;
 }
@@ -172,20 +200,23 @@ int main (int argc, char **argv){
 	}
 	printf("Getting lis contents...\n");
 	printf("%s\n", curr_list);	
-	listContents = returnListEntries();
 	printf("Starting GUI\n");
 	IupOpen(&argc, &argv);
 	heading = IupLabel("Welcome to GUTS, choose your options:");
-	list_contents = IupLabel(listContents);
-	list_scroll = IupScrollBox(list_contents);
 	item_open = IupItem("Open", NULL);
+	list_head = IupLabel("");
+	tm.vbox = IupVbox(NULL);
+	tm.list_container = IupScrollBox(tm.vbox);
+	printf("Setting up scroll box...\n");
+	returnListEntries();
 	IupSetAttribute(item_open, "KEY", "O");
 	file_menu = IupMenu(item_open, NULL);
 	sub1_menu = IupSubmenu("File", file_menu);
 	menu = IupMenu(sub1_menu, NULL);
 	IupSetHandle("main_menu", menu);
 	button = IupButton("Get current user name", NULL);
-	vbox=IupVbox(heading, list_scroll, button, NULL);
+	printf("Setting up the vbox...\n");
+	vbox=IupVbox(heading, list_head,  tm.list_container, button, NULL);
 	dlg=IupDialog(vbox);
 	IupSetAttribute(dlg, "MENU", "main_menu");
 	IupSetAttribute(dlg, "TITLE", "GUTS");
@@ -199,6 +230,5 @@ int main (int argc, char **argv){
 	IupMainLoop();
 	IupClose();
 	writeBinaryFile();
-	free(listContents);
 	return EXIT_SUCCESS;
 }
