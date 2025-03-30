@@ -18,6 +18,7 @@
 #else
 #define MAX_SIZE 256
 #endif
+#define MAX_ENTRIES 250
 
 char curr_list[MAX_SIZE]="";
 char curr_txtList[MAX_SIZE]="";
@@ -25,11 +26,10 @@ FILE *loaded_list;
 FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
-const int MAX_ENTRIES = 250;
 Ihandle *dlg, *button,  *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu;
 
 typedef struct{
-	Ihandle **toggles;
+	Ihandle *toggles[MAX_ENTRIES];
 	int count;
 	Ihandle *list_container;
 	Ihandle *vbox;
@@ -43,11 +43,16 @@ void returnListEntries(){
 	}
 	if(tm.toggles){
 		for(int i=0; i< tm.count; i++){
-			IupDetach(tm.toggles[i]);
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			printf("Does it crash at this moment or after trying to access a toggle?\n");
+			printf("Removing %s toggle\n", IupGetAttribute(tm.toggles[i], "TITLE"));
 			IupDestroy(tm.toggles[i]);
+			printf("It's... good?\n");
+			tm.toggles[i] = NULL;
 		}
 	}
-	tm.toggles=malloc(curr_list_line_num * sizeof(Ihandle *));
 	tm.count = curr_list_line_num;
 	loaded_list = fopen(curr_txtList, "r");
 	char line[MAX_SIZE+2048];
@@ -55,7 +60,8 @@ void returnListEntries(){
 	while(fgets(line, sizeof(line), loaded_list)){
 		line[strcspn(line, "\n")] = 0;
 		if(counter == 0){
-			list_head = IupLabel(line);
+			printf("%s\n", line);
+			IupSetAttribute(list_head, "TITLE", line);
 		} else {
 			tm.toggles[counter-1] = IupToggle(line, NULL);
 			IupAppend(tm.vbox, tm.toggles[counter-1]);
@@ -71,6 +77,144 @@ void returnListEntries(){
 	IupMap(dlg);
 	IupRefresh(dlg);
 	return;
+}
+
+void returnFilteredListEntries(){
+	//TODO: Code to make a filtered list to explore through
+	return;
+}
+
+void addFileToList(char *new_entry){
+	if(loaded_list != NULL){
+		fclose(loaded_list);
+	}
+	loaded_list = fopen(curr_txtList, "a");
+	strcat(new_entry, ",file\n");
+	if(curr_list_line_num < MAX_ENTRIES){
+		fprintf(loaded_list, new_entry);
+		printf("Added file\n");
+	}
+	return;
+}
+
+void addReccursiveFilesToList(char *directory){
+	if(loaded_list != NULL){
+		fclose(loaded_list);
+	}
+	struct dirent *entry;
+	loaded_list = fopen(curr_txtList, "a");
+	DIR *dir = opendir(directory);
+	if(dir == NULL){
+		return;
+	}
+	if(curr_list_line_num == MAX_ENTRIES){
+		closedir(dir);
+		return;
+	}
+	while((entry = readdir(dir)) != NULL){
+		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strstr(entry->d_name, ".git")!=NULL){
+			continue;
+		}
+		char path[MAX_SIZE];
+		snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
+		char pathToWrite[MAX_SIZE];
+		strcpy(pathToWrite, path);
+		struct stat statbuf;
+		if(stat(path, &statbuf) == 0 && curr_list_line_num < MAX_ENTRIES){
+			if(S_ISDIR(statbuf.st_mode)){
+				fprintf(loaded_list, strcat(pathToWrite, ",dir\n"));
+				addReccursiveFilesToList(path);
+			} else {
+				addFileToList(pathToWrite);
+			}
+			curr_list_line_num++;
+		}
+	}
+	closedir(dir);
+	return;
+}
+
+void addDirectoryToList(char *new_entry){
+	if(loaded_list != NULL){
+		fclose(loaded_list);
+	}
+	loaded_list = fopen(curr_txtList, "a");	
+	char directory[MAX_SIZE];
+	strcpy(directory, new_entry);
+	if(curr_list_line_num == MAX_ENTRIES){
+		return;
+	}
+	fprintf(loaded_list, strcat(new_entry, ",dir\n"));
+
+}
+
+int btn_chooseFileToAdd(Ihandle *self){
+	Ihandle *file_dlg;
+	Ihandle *temp_label = (Ihandle *)IupGetAttribute(self, "FILE");
+	Ihandle *parent = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	file_dlg = IupFileDlg();
+	IupSetAttributes(file_dlg, "DIALOGTYPE=OPEN, TITLE=\"Choose your file\"");
+	IupPopup(file_dlg, IUP_CENTER, IUP_CENTER);
+	switch(IupGetInt(file_dlg, "STATUS")){
+		case 0:
+			const char *file_path = IupGetAttribute(file_dlg, "VALUE");
+			IupSetAttribute(temp_label, "TITLE", file_path);
+			printf("%s\n", file_path);
+			IupSetAttribute(parent, "FILE", strdup(file_path));
+			printf("[DEBUG] filepath should be readable: %s\n", IupGetAttribute(parent, "FILE"));
+		default:
+			break;
+	}
+	IupMap(parent);
+	IupRefresh(parent);
+	IupDestroy(file_dlg);
+	return IUP_DEFAULT;
+}
+
+int btn_add_file(Ihandle *self){
+	Ihandle *temp_dlg = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	char *file_path = IupGetAttribute(temp_dlg, "FILE");
+	printf("[DEBUG] Retrieved filepath: %p\n", (void *)file_path);
+	if(file_path){
+		printf("[DEBUG]File path is: %s\n", file_path);
+	} else {
+		printf("FILE PATH IS NULL!");
+	}
+	printf("%i\n", isFileCreated(file_path));
+	printf("%s\n", file_path);
+	if(isFileCreated(file_path)){
+		printf("I am adding something to the list...\n");
+		addFileToList(file_path);
+		returnListEntries();
+		IupSetAttribute(temp_dlg, "FILE", NULL);
+	}
+	printf("Preparing to destroy...\n");
+	IupDestroy(temp_dlg);
+	printf("Destroyed\n");
+	return IUP_DEFAULT;
+}
+
+int btn_addFileToList(Ihandle *self){
+	Ihandle *temp_dlg, *temp_vbox, *temp_label, *btn_add, *btn_accept, *btn_cancel;
+	printf("We at least open to here\n");
+	temp_label = IupLabel("");
+	btn_accept = IupButton("Add file to list", NULL);
+	btn_cancel = IupButton("Cancel", NULL);
+	btn_add = IupButton("Choose file", NULL);
+	temp_vbox = IupVbox(temp_label, btn_add, btn_accept, btn_cancel, NULL);
+	temp_dlg = IupDialog(temp_vbox);
+	IupSetAttribute(temp_dlg, "TITLE", "Add File");
+	IupSetAttribute(temp_dlg, "SIZE", "QUARTERxQUARTER");
+	IupSetAttribute(temp_vbox, "ALIGNMENT", "ACENTER");
+	IupSetAttribute(temp_vbox, "GAP", "10");
+	IupSetAttribute(temp_vbox, "MARGIN", "10x10");
+	IupSetAttribute(btn_accept, "PAR_DLG", (char *)temp_dlg);
+	IupSetAttribute(btn_add, "PAR_DLG", (char *)temp_dlg);
+	IupSetAttribute(btn_accept, "FILE", (char *)temp_label);
+	IupSetAttribute(btn_add, "FILE", (char *)temp_label);
+	IupSetCallback(btn_accept, "ACTION", (Icallback) btn_add_file);
+	IupSetCallback(btn_add, "ACTION", (Icallback) btn_chooseFileToAdd);
+	IupShowXY(temp_dlg, IUP_CENTER, IUP_CENTER);
 }
 
 void writeTextFile(){
@@ -120,11 +264,6 @@ void writeBinaryFile(){
 	}
 	fclose(loaded_list);
 	return;
-}
-
-int btn_get_curr_user(Ihandle *self){
-	IupMessage("Current User", getUserName());
-	return IUP_CLOSE;
 }
 
 int btn_open_file(Ihandle *self){
@@ -214,7 +353,7 @@ int main (int argc, char **argv){
 	sub1_menu = IupSubmenu("File", file_menu);
 	menu = IupMenu(sub1_menu, NULL);
 	IupSetHandle("main_menu", menu);
-	button = IupButton("Get current user name", NULL);
+	button = IupButton("Add File To List", NULL);
 	printf("Setting up the vbox...\n");
 	vbox=IupVbox(heading, list_head,  tm.list_container, button, NULL);
 	dlg=IupDialog(vbox);
@@ -225,7 +364,7 @@ int main (int argc, char **argv){
 	IupSetAttribute(vbox, "GAP", "10");
 	IupSetAttribute(vbox, "MARGIN", "10x10");
 	IupSetCallback(item_open, "ACTION", (Icallback) btn_open_file);
-	IupSetCallback(button, "ACTION", (Icallback) btn_get_curr_user);
+	IupSetCallback(button, "ACTION", (Icallback) btn_addFileToList);
 	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);
 	IupMainLoop();
 	IupClose();
