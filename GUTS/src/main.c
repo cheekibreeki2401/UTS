@@ -26,7 +26,8 @@ FILE *loaded_list;
 FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
-Ihandle *dlg, *button,  *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu;
+char list_name[MAX_SIZE];
+Ihandle *dlg, *button,  *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save;
 
 typedef struct{
 	Ihandle *toggles[MAX_ENTRIES];
@@ -61,6 +62,7 @@ void returnListEntries(){
 		line[strcspn(line, "\n")] = 0;
 		if(counter == 0){
 			printf("%s\n", line);
+			strcpy(list_name, line);
 			IupSetAttribute(list_head, "TITLE", line);
 		} else {
 			tm.toggles[counter-1] = IupToggle(line, NULL);
@@ -196,7 +198,7 @@ int btn_add_file(Ihandle *self){
 
 int btn_addFileToList(Ihandle *self){
 	Ihandle *temp_dlg, *temp_vbox, *temp_label, *btn_add, *btn_accept, *btn_cancel;
-	printf("We at least open to here\n");
+	printf("Opening file picker\n");
 	temp_label = IupLabel("");
 	btn_accept = IupButton("Add file to list", NULL);
 	btn_cancel = IupButton("Cancel", NULL);
@@ -214,6 +216,81 @@ int btn_addFileToList(Ihandle *self){
 	IupSetAttribute(btn_add, "FILE", (char *)temp_label);
 	IupSetCallback(btn_accept, "ACTION", (Icallback) btn_add_file);
 	IupSetCallback(btn_add, "ACTION", (Icallback) btn_chooseFileToAdd);
+	IupShowXY(temp_dlg, IUP_CENTER, IUP_CENTER);
+}
+
+int btn_chooseDirectoryToAdd(Ihandle *self){
+	Ihandle *file_dlg;
+	Ihandle *temp_label = (Ihandle *)IupGetAttribute(self, "FILE");
+	Ihandle *parent = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	file_dlg = IupFileDlg();
+	IupSetAttribute(file_dlg, "DIALOGTYPE", "DIR");
+	IupSetAttributes(file_dlg, "DIALOGTYPE=OPEN, TITLE=\"Choose your file\"");
+	IupPopup(file_dlg, IUP_CENTER, IUP_CENTER);
+	switch(IupGetInt(file_dlg, "STATUS")){
+		case 0:
+			const char *file_path = IupGetAttribute(file_dlg, "VALUE");
+			IupSetAttribute(temp_label, "TITLE", file_path);
+			printf("%s\n", file_path);
+			IupSetAttribute(parent, "FILE", strdup(file_path));
+			printf("[DEBUG] filepath should be readable: %s\n", IupGetAttribute(parent, "FILE"));
+		default:
+			break;
+	}
+	IupMap(parent);
+	IupRefresh(parent);
+	IupDestroy(file_dlg);
+	return IUP_DEFAULT;
+}
+
+int btn_add_directory(Ihandle *self){
+	Ihandle *temp_dlg = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	char *file_path = IupGetAttribute(temp_dlg, "FILE");
+	Ihandle *tgl_recur = (Ihandle *)IupGetAttribute(self, "TOG");
+	printf("[DEBUG] Retrieved filepath: %p\n", (void *)file_path);
+	if(file_path){
+		printf("[DEBUG]File path is: %s\n", file_path);
+	} else {
+		printf("FILE PATH IS NULL!");
+	}
+	printf("%i\n", isFileCreated(file_path));
+	printf("%s\n", file_path);
+	if(isFolderCreated(file_path)){
+		printf("I am adding something to the list...\n");
+		addFileToList(file_path);
+		if(IupGetAttribute(tgl_recur, "VALUE") == "ON"){
+			addReccursiveFilesToList(file_path);	
+		}
+		returnListEntries();
+		IupSetAttribute(temp_dlg, "FILE", NULL);
+	}
+	printf("Preparing to destroy...\n");
+	IupDestroy(temp_dlg);
+	printf("Destroyed\n");
+	return IUP_DEFAULT;
+}
+
+int btn_addDirectoryToList(Ihandle *self){
+	Ihandle *temp_dlg, *temp_vbox, *temp_label, *btn_add, *btn_accept, *btn_cancel, *tgl_recur;
+	printf("Opening directory picker\n");
+	temp_label = IupLabel("");
+	btn_accept = IupButton("Add directory to list", NULL);
+	btn_cancel = IupButton("Cancel", NULL);
+	btn_add = IupButton("Choose file", NULL);
+	tgl_recur = IupToggle("Recursively add all files and directories?\n", NULL);
+	temp_vbox = IupVbox(temp_label, tgl_recur, btn_add, btn_accept, btn_cancel, NULL);
+	temp_dlg = IupDialog(temp_vbox);
+	IupSetAttribute(temp_dlg, "TITLE", "Add directory");
+	IupSetAttribute(temp_dlg, "SIZE", "QUARTERxQUARTER");
+	IupSetAttribute(temp_vbox, "ALIGNMENT", "ACENTER");
+	IupSetAttribute(temp_vbox, "GAP", "10");
+	IupSetAttribute(temp_vbox, "MARGIN", "10x10");
+	IupSetAttribute(btn_accept, "PAR_DLG", (char *)temp_dlg);
+	IupSetAttribute(btn_add, "PAR_DLG", (char *)temp_dlg);
+	IupSetAttribute(btn_add, "FILE", (char *)temp_label);
+	IupSetAttribute(btn_accept, "TOG", (char *)tgl_recur);
+	IupSetCallback(btn_accept, "ACTION", (Icallback) btn_add_directory);
+	IupSetCallback(btn_add, "ACTION", (Icallback) btn_chooseDirectoryToAdd);
 	IupShowXY(temp_dlg, IUP_CENTER, IUP_CENTER);
 }
 
@@ -287,6 +364,58 @@ int btn_open_file(Ihandle *self){
 	return IUP_DEFAULT;
 }
 
+int btn_save_file(Ihandle *self){
+	Ihandle *file_dlg;
+	file_dlg = IupFileDlg();
+	IupSetAttributes(file_dlg, "DIALOGTYPE=SAVE, TITLE=\"Save .tfo file\"");
+	IupSetAttributes(file_dlg, "FILTER = \"*.tfo\", FILTERINFO=\"Tagged File Object\"");
+	IupPopup(file_dlg, IUP_CENTER, IUP_CENTER);
+	switch(IupGetInt(file_dlg, "STATUS")){
+		case 1:
+			if(loaded_list != NULL){
+				fclose(loaded_list);
+			}
+			strcpy(curr_list,IupGetAttribute(file_dlg, "VALUE"));
+			char line[MAX_SIZE+2048];
+			printf("We make our stand\n");
+			strcpy(line, list_name);
+			strcat(line, "\n");
+			FILE *temp_list = fopen(curr_list, "wb");
+			printf("File is opened\n");
+			fwrite(&line, sizeof(line), 1, temp_list);
+			printf("Head is written\n");
+			if(tm.toggles){
+				for(int i=0; i<tm.count; i++){
+					if(tm.toggles[i] != NULL){
+						char next_line[MAX_SIZE+2048];
+						strcpy(next_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+						printf("Got line %s\n", next_line);
+						strcat(next_line, "\n");
+						printf("Preparing to write line which is %s\n", next_line);
+						fwrite(next_line, sizeof(next_line), 1, temp_list);
+						printf("Line written esucessfully\n");
+					}
+				}
+			}
+			fclose(temp_list);
+			if(isFileCreated(curr_list)){
+				writeTextFile();
+				returnListEntries();
+			}
+			break;
+		case 0:
+			writeBinaryFile();
+			writeTextFile();
+			returnListEntries();
+			break;
+		default:
+			printf("Something went horribly wrong\n");
+			return IUP_CLOSE;
+	}
+	IupDestroy(file_dlg);
+	return IUP_DEFAULT;
+}
+
 int main (int argc, char **argv){
 	char utsFilePath[MAX_SIZE]="";
 	printf("Finding main file...\n");
@@ -343,13 +472,15 @@ int main (int argc, char **argv){
 	IupOpen(&argc, &argv);
 	heading = IupLabel("Welcome to GUTS, choose your options:");
 	item_open = IupItem("Open", NULL);
+	item_save = IupItem("Save", NULL);
 	list_head = IupLabel("");
 	tm.vbox = IupVbox(NULL);
 	tm.list_container = IupScrollBox(tm.vbox);
 	printf("Setting up scroll box...\n");
 	returnListEntries();
 	IupSetAttribute(item_open, "KEY", "O");
-	file_menu = IupMenu(item_open, NULL);
+	IupSetAttribute(item_save, "KEY", "S");
+	file_menu = IupMenu(item_open, item_save, NULL);
 	sub1_menu = IupSubmenu("File", file_menu);
 	menu = IupMenu(sub1_menu, NULL);
 	IupSetHandle("main_menu", menu);
@@ -365,9 +496,12 @@ int main (int argc, char **argv){
 	IupSetAttribute(vbox, "MARGIN", "10x10");
 	IupSetCallback(item_open, "ACTION", (Icallback) btn_open_file);
 	IupSetCallback(button, "ACTION", (Icallback) btn_addFileToList);
+	IupSetCallback(item_save, "ACTION", (Icallback) btn_save_file);
 	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);
 	IupMainLoop();
+	if(remove(curr_txtList)!=0){
+		return 1;
+	}
 	IupClose();
-	writeBinaryFile();
 	return EXIT_SUCCESS;
 }
