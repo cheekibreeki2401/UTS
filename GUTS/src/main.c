@@ -27,7 +27,7 @@ FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
 char list_name[MAX_SIZE];
-Ihandle *dlg, *button,  *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save;
+Ihandle *dlg, *button, *button_dir,  *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save;
 
 typedef struct{
 	Ihandle *toggles[MAX_ENTRIES];
@@ -103,6 +103,7 @@ void addReccursiveFilesToList(char *directory){
 	if(loaded_list != NULL){
 		fclose(loaded_list);
 	}
+	printf("Adding files from this directory: %s\n", directory);
 	struct dirent *entry;
 	loaded_list = fopen(curr_txtList, "a");
 	DIR *dir = opendir(directory);
@@ -224,8 +225,7 @@ int btn_chooseDirectoryToAdd(Ihandle *self){
 	Ihandle *temp_label = (Ihandle *)IupGetAttribute(self, "FILE");
 	Ihandle *parent = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
 	file_dlg = IupFileDlg();
-	IupSetAttribute(file_dlg, "DIALOGTYPE", "DIR");
-	IupSetAttributes(file_dlg, "DIALOGTYPE=OPEN, TITLE=\"Choose your file\"");
+	IupSetAttributes(file_dlg, "DIALOGTYPE=DIR, TITLE=\"Choose your file\"");
 	IupPopup(file_dlg, IUP_CENTER, IUP_CENTER);
 	switch(IupGetInt(file_dlg, "STATUS")){
 		case 0:
@@ -257,9 +257,13 @@ int btn_add_directory(Ihandle *self){
 	printf("%s\n", file_path);
 	if(isFolderCreated(file_path)){
 		printf("I am adding something to the list...\n");
-		addFileToList(file_path);
-		if(IupGetAttribute(tgl_recur, "VALUE") == "ON"){
-			addReccursiveFilesToList(file_path);	
+		char temp_file_path[MAX_SIZE];
+		strcpy(temp_file_path, file_path);
+		addDirectoryToList(file_path);
+		printf("%s\n", IupGetAttribute(tgl_recur, "VALUE"));
+		if(strcmp(IupGetAttribute(tgl_recur, "VALUE"), "ON") == 0){
+			printf("Let's do this\n");
+			addReccursiveFilesToList(temp_file_path);	
 		}
 		returnListEntries();
 		IupSetAttribute(temp_dlg, "FILE", NULL);
@@ -485,8 +489,9 @@ int main (int argc, char **argv){
 	menu = IupMenu(sub1_menu, NULL);
 	IupSetHandle("main_menu", menu);
 	button = IupButton("Add File To List", NULL);
+	button_dir = IupButton("Add Directory To List", NULL);
 	printf("Setting up the vbox...\n");
-	vbox=IupVbox(heading, list_head,  tm.list_container, button, NULL);
+	vbox=IupVbox(heading, list_head,  tm.list_container, button, button_dir, NULL);
 	dlg=IupDialog(vbox);
 	IupSetAttribute(dlg, "MENU", "main_menu");
 	IupSetAttribute(dlg, "TITLE", "GUTS");
@@ -496,6 +501,7 @@ int main (int argc, char **argv){
 	IupSetAttribute(vbox, "MARGIN", "10x10");
 	IupSetCallback(item_open, "ACTION", (Icallback) btn_open_file);
 	IupSetCallback(button, "ACTION", (Icallback) btn_addFileToList);
+	IupSetCallback(button_dir, "ACTION", (Icallback) btn_addDirectoryToList);
 	IupSetCallback(item_save, "ACTION", (Icallback) btn_save_file);
 	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);
 	IupMainLoop();
