@@ -27,7 +27,7 @@ FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
 char list_name[MAX_SIZE];
-Ihandle *dlg, *button, *button_dir,  *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save;
+Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save;
 
 typedef struct{
 	Ihandle *toggles[MAX_ENTRIES];
@@ -420,6 +420,116 @@ int btn_save_file(Ihandle *self){
 	return IUP_DEFAULT;
 }
 
+int btn_accept_list_name(Ihandle *self){
+	Ihandle *entered_text = (Ihandle *)IupGetAttribute(self, "ENTERTEXT");
+	Ihandle *tmp_dlg = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	strcpy(list_name, IupGetAttribute(entered_text, "VALUE"));
+	strcat(list_name, "\n");
+	if(loaded_list != NULL){
+		fclose(loaded_list);
+	}
+	loaded_list = fopen(curr_txtList, "w");
+	fprintf(loaded_list, list_name);
+	if(tm.toggles){
+		for(int i = 0; i<tm.count; i++){
+			if(tm.toggles[i] != NULL){
+				char next_line[MAX_SIZE+2048];
+				strcpy(next_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+				strcat(next_line, "\n");
+				fprintf(loaded_list, next_line);
+			}
+		}
+	}
+	IupDestroy(tmp_dlg);
+	returnListEntries();
+	return IUP_DEFAULT;
+}
+
+int btn_name_list(Ihandle *self){
+	Ihandle *namer, *temp_vbox, *temp_hbox, *namer_label, *namer_text, *btn_temp_accept;
+	char text_size[4];
+	sprintf(text_size, "%d", MAX_SIZE);
+	namer_label = IupLabel("List name: ");
+	namer_text = IupText(NULL);
+	IupSetAttribute(namer_text, "NC", text_size);
+	IupSetAttribute(namer_text, "CUEBANNER", "NEW_TAGGING_FILE");
+	temp_hbox = IupHbox(namer_label, namer_text, NULL);
+	btn_temp_accept = IupButton("Rename list", NULL);
+	temp_vbox = IupVbox(temp_hbox, btn_temp_accept, NULL);
+	namer = IupDialog(temp_vbox);
+	IupSetAttribute(namer, "TITLE", "Rename list");
+	IupSetAttribute(namer, "SIZE", "QUARTERxQUARTER");
+	IupSetAttribute(temp_hbox, "GAP", "10");
+       	IupSetAttribute(temp_hbox, "MARGIN", "10x10");
+	IupSetAttribute(temp_vbox, "ALIGNMENT", "ACENTER");
+	IupSetAttribute(temp_vbox, "GAP", "10");
+	IupSetAttribute(temp_vbox, "MARGIN", "10x10");
+	IupSetAttribute(namer_text, "SIZE", "100");
+	IupSetCallback(btn_temp_accept, "ACTION", (Icallback) btn_accept_list_name);
+	IupSetAttribute(btn_temp_accept, "ENTERTEXT", (char *)namer_text);
+	IupSetAttribute(btn_temp_accept, "PAR_DLG", (char *)namer);
+	IupShowXY(namer, IUP_CENTER, IUP_CENTER);
+	return IUP_DEFAULT;
+}
+
+int btn_remove_entries(Ihandle *self){
+	Ihandle *par = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	if(tm.toggles){
+		for(int i = 0; i < tm.count; i++){
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			if(strcmp(IupGetAttribute(tm.toggles[i], "VALUE"), "ON") == 0){
+				IupDestroy(tm.toggles[i]);
+				tm.toggles[i] = NULL;				
+			}
+		}
+		if(loaded_list != NULL){
+			fclose(loaded_list);
+		}
+		loaded_list = fopen(curr_txtList, "w");
+		strcat(list_name, "\n");
+		fprintf(loaded_list, list_name);
+		if(tm.toggles){
+			for(int i = 0; i<tm.count; i++){
+				if(tm.toggles[i] != NULL){
+					char next_line[MAX_SIZE+2048];
+					strcpy(next_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+					strcat(next_line, "\n");
+					fprintf(loaded_list, next_line);
+				}
+			}
+		}
+	}
+	IupDestroy(par);
+	returnListEntries();
+	return IUP_DEFAULT;
+}
+
+int btn_cancel(Ihandle *self){
+	Ihandle *par = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	IupDestroy(par);
+	return IUP_DEFAULT;
+}
+
+int btn_remove_item(Ihandle *self){
+	Ihandle *confirm, *confirm_msg, *btn_yes, *btn_no, *tmp_vbox, *tmp_hbox;
+	confirm_msg = IupLabel("Do you wish to delete these items from the list?");
+	btn_yes = IupButton("Yes", NULL);
+	btn_no = IupButton("No", NULL);
+	tmp_hbox = IupHbox(btn_yes, btn_no, NULL);
+	tmp_vbox = IupVbox(confirm_msg, tmp_hbox, NULL);
+	confirm = IupDialog(tmp_vbox);
+	IupSetAttribute(confirm, "TITLE", "Confirm deleting list entries");
+	IupSetAttribute(confirm, "SIZE", "QUARTERxQUARTER");
+	IupSetAttribute(btn_yes, "PAR_DLG", (char *)confirm);
+	IupSetAttribute(btn_no, "PAR_DLG", (char *)confirm);
+	IupSetCallback(btn_yes, "ACTION", (Icallback) btn_remove_entries);
+	IupSetCallback(btn_no, "ACTION", (Icallback) btn_cancel);
+	IupShowXY(confirm, IUP_CENTER, IUP_CENTER);
+	return IUP_DEFAULT;
+}
+
 int main (int argc, char **argv){
 	char utsFilePath[MAX_SIZE]="";
 	printf("Finding main file...\n");
@@ -490,8 +600,10 @@ int main (int argc, char **argv){
 	IupSetHandle("main_menu", menu);
 	button = IupButton("Add File To List", NULL);
 	button_dir = IupButton("Add Directory To List", NULL);
+	button_list_name = IupButton("Rename list", NULL);
+	button_remove_entries = IupButton("Remove selected entries", NULL);
 	printf("Setting up the vbox...\n");
-	vbox=IupVbox(heading, list_head,  tm.list_container, button, button_dir, NULL);
+	vbox=IupVbox(heading, list_head,  tm.list_container, button, button_dir, button_remove_entries, button_list_name, NULL);
 	dlg=IupDialog(vbox);
 	IupSetAttribute(dlg, "MENU", "main_menu");
 	IupSetAttribute(dlg, "TITLE", "GUTS");
@@ -503,6 +615,8 @@ int main (int argc, char **argv){
 	IupSetCallback(button, "ACTION", (Icallback) btn_addFileToList);
 	IupSetCallback(button_dir, "ACTION", (Icallback) btn_addDirectoryToList);
 	IupSetCallback(item_save, "ACTION", (Icallback) btn_save_file);
+	IupSetCallback(button_list_name, "ACTION", (Icallback) btn_name_list);
+	IupSetCallback(button_remove_entries, "ACTION", (Icallback)btn_remove_item);
 	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);
 	IupMainLoop();
 	if(remove(curr_txtList)!=0){
