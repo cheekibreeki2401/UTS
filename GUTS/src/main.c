@@ -27,7 +27,7 @@ FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
 char list_name[MAX_SIZE];
-Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save;
+Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save, *button_add_tag;
 
 typedef struct{
 	Ihandle *toggles[MAX_ENTRIES];
@@ -522,11 +522,93 @@ int btn_remove_item(Ihandle *self){
 	confirm = IupDialog(tmp_vbox);
 	IupSetAttribute(confirm, "TITLE", "Confirm deleting list entries");
 	IupSetAttribute(confirm, "SIZE", "QUARTERxQUARTER");
+	IupSetAttribute(tmp_vbox, "ALIGNMENT", "ACENTER");
+	IupSetAttribute(tmp_vbox, "GAP", "10");
+	IupSetAttribute(tmp_vbox, "MARGIN", "10x10");
 	IupSetAttribute(btn_yes, "PAR_DLG", (char *)confirm);
 	IupSetAttribute(btn_no, "PAR_DLG", (char *)confirm);
 	IupSetCallback(btn_yes, "ACTION", (Icallback) btn_remove_entries);
 	IupSetCallback(btn_no, "ACTION", (Icallback) btn_cancel);
 	IupShowXY(confirm, IUP_CENTER, IUP_CENTER);
+	return IUP_DEFAULT;
+}
+
+int btn_addToEntries(Ihandle *self){
+	Ihandle *par = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	Ihandle *tag = (Ihandle *)IupGetAttribute(self, "NEW_TAG");
+	if(tm.toggles){
+		for(int i = 0; i<tm.count; i++){
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			if(strcmp(IupGetAttribute(tm.toggles[i], "VALUE"), "ON") == 0){
+				char edited_line[MAX_SIZE+2048];
+				printf("Found a file to add tag to\n");
+				char curr_line[MAX_SIZE+2048];
+				strcpy(curr_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+				char *token = strtok(curr_line, ",");
+				int token_ctr = 0;
+				int max_tags = 0;
+				while(token!=NULL){
+					if(token_ctr <= 9){
+						token_ctr++;
+					} else {
+						max_tags = 1;
+						break;
+					}
+					token=strtok(NULL,",");
+				}
+				if(max_tags != 1){
+					strcpy(edited_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+					strcat(edited_line, ",");
+					strcat(edited_line, IupGetAttribute(tag, "VALUE"));
+					printf("Saving %s\n", edited_line);
+					IupSetAttribute(tm.toggles[i], "TITLE", edited_line);
+				}
+			}
+		}
+	}
+	if(loaded_list != NULL){
+		fclose(loaded_list);
+	}
+	loaded_list = fopen(curr_txtList, "w");
+	strcat(list_name, "\n");
+	fprintf(loaded_list, list_name);
+	if(tm.toggles){
+		for(int i = 0; i<tm.count; i++){
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			char new_line[MAX_SIZE+2048];
+			strcpy(new_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+			strcat(new_line, "\n");
+			fprintf(loaded_list, new_line);
+		}
+	}
+	IupDestroy(par);
+	returnListEntries();
+	return IUP_DEFAULT;
+}
+
+
+int btn_add_tag(Ihandle *self){
+	Ihandle *namer, *namer_label, *namer_text, *btn_accept, *btn_cancel, *tmp_vbox, *tmp_hbox1, *tmp_hbox2;
+	namer_label = IupLabel("Enter new tag: ");
+	namer_text = IupText(NULL);
+	btn_accept = IupButton("Accept new tag", NULL);
+	btn_cancel = IupButton("Cancel", NULL);
+	tmp_hbox1 = IupHbox(namer_label, namer_text, NULL);
+	tmp_hbox2 = IupHbox(btn_accept, btn_cancel, NULL);
+	tmp_vbox = IupVbox(tmp_hbox1, tmp_hbox2, NULL);
+	namer = IupDialog(tmp_vbox);
+	IupSetAttribute(namer, "TITLE", "Add Tag");
+	IupSetAttribute(namer, "SIZE", "QUARTERxQUARTER");
+	IupSetAttribute(btn_accept, "PAR_DLG", (char *)namer);
+	IupSetAttribute(btn_accept, "NEW_TAG", (char *)namer_text);
+	IupSetAttribute(btn_cancel, "PAR_DLG", (char *)namer);
+	IupSetCallback(btn_accept, "ACTION", (Icallback) btn_addToEntries);
+	IupSetCallback(btn_cancel, "ACTION", (Icallback) btn_cancel);
+	IupShowXY(namer, IUP_CENTER, IUP_CENTER);
 	return IUP_DEFAULT;
 }
 
@@ -602,8 +684,9 @@ int main (int argc, char **argv){
 	button_dir = IupButton("Add Directory To List", NULL);
 	button_list_name = IupButton("Rename list", NULL);
 	button_remove_entries = IupButton("Remove selected entries", NULL);
+	button_add_tag = IupButton("Add tag to selected entries", NULL);
 	printf("Setting up the vbox...\n");
-	vbox=IupVbox(heading, list_head,  tm.list_container, button, button_dir, button_remove_entries, button_list_name, NULL);
+	vbox=IupVbox(heading, list_head,  tm.list_container, button, button_dir, button_add_tag, button_remove_entries, button_list_name, NULL);
 	dlg=IupDialog(vbox);
 	IupSetAttribute(dlg, "MENU", "main_menu");
 	IupSetAttribute(dlg, "TITLE", "GUTS");
@@ -611,6 +694,7 @@ int main (int argc, char **argv){
 	IupSetAttribute(vbox, "ALIGNMENT", "ACENTER");
 	IupSetAttribute(vbox, "GAP", "10");
 	IupSetAttribute(vbox, "MARGIN", "10x10");
+	IupSetCallback(button_add_tag, "ACTION", (Icallback) btn_add_tag);
 	IupSetCallback(item_open, "ACTION", (Icallback) btn_open_file);
 	IupSetCallback(button, "ACTION", (Icallback) btn_addFileToList);
 	IupSetCallback(button_dir, "ACTION", (Icallback) btn_addDirectoryToList);
