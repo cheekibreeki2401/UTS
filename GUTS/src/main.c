@@ -27,7 +27,7 @@ FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
 char list_name[MAX_SIZE];
-Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save, *button_add_tag;
+Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_tag, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save, *button_add_tag;
 
 typedef struct{
 	Ihandle *toggles[MAX_ENTRIES];
@@ -37,6 +37,7 @@ typedef struct{
 }ToggleManager;
 
 ToggleManager tm = {0};
+ToggleManager tm2 = {0};
 
 void returnListEntries(){
 	if(loaded_list != NULL){
@@ -47,10 +48,7 @@ void returnListEntries(){
 			if(tm.toggles[i] == NULL){
 				continue;
 			}
-			printf("Does it crash at this moment or after trying to access a toggle?\n");
-			printf("Removing %s toggle\n", IupGetAttribute(tm.toggles[i], "TITLE"));
 			IupDestroy(tm.toggles[i]);
-			printf("It's... good?\n");
 			tm.toggles[i] = NULL;
 		}
 	}
@@ -61,13 +59,11 @@ void returnListEntries(){
 	while(fgets(line, sizeof(line), loaded_list)){
 		line[strcspn(line, "\n")] = 0;
 		if(counter == 0){
-			printf("%s\n", line);
 			strcpy(list_name, line);
 			IupSetAttribute(list_head, "TITLE", line);
 		} else {
 			tm.toggles[counter-1] = IupToggle(line, NULL);
 			IupAppend(tm.vbox, tm.toggles[counter-1]);
-			printf("%s\n", IupGetAttribute(tm.toggles[counter-1], "TITLE"));
 			IupMap(tm.toggles[counter-1]);
 		}
 		counter++;
@@ -542,10 +538,12 @@ int btn_addToEntries(Ihandle *self){
 				continue;
 			}
 			if(strcmp(IupGetAttribute(tm.toggles[i], "VALUE"), "ON") == 0){
-				char edited_line[MAX_SIZE+2048];
+				char edited_line[MAX_SIZE+2048] = {0};
 				printf("Found a file to add tag to\n");
-				char curr_line[MAX_SIZE+2048];
-				strcpy(curr_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+				char curr_line[MAX_SIZE+2048]={0};
+				const char* title = IupGetAttribute(tm.toggles[i], "TITLE");
+				printf("Should be blank line every time: %s\n", edited_line);
+				strcpy(curr_line, title);
 				char *token = strtok(curr_line, ",");
 				int token_ctr = 0;
 				int max_tags = 0;
@@ -559,11 +557,12 @@ int btn_addToEntries(Ihandle *self){
 					token=strtok(NULL,",");
 				}
 				if(max_tags != 1){
-					strcpy(edited_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+					strcpy(edited_line, title);
 					strcat(edited_line, ",");
 					strcat(edited_line, IupGetAttribute(tag, "VALUE"));
 					printf("Saving %s\n", edited_line);
-					IupSetAttribute(tm.toggles[i], "TITLE", edited_line);
+					IupSetStrAttribute(tm.toggles[i], "TITLE", edited_line);
+					printf("Saved: %s\n", IupGetAttribute(tm.toggles[i], "TITLE"));
 				}
 			}
 		}
@@ -579,9 +578,11 @@ int btn_addToEntries(Ihandle *self){
 			if(tm.toggles[i] == NULL){
 				continue;
 			}
+			printf("Line: %s\n", IupGetAttribute(tm.toggles[i], "TITLE"));
 			char new_line[MAX_SIZE+2048];
 			strcpy(new_line, IupGetAttribute(tm.toggles[i], "TITLE"));
 			strcat(new_line, "\n");
+			printf("%s", new_line);
 			fprintf(loaded_list, new_line);
 		}
 	}
@@ -609,6 +610,206 @@ int btn_add_tag(Ihandle *self){
 	IupSetCallback(btn_accept, "ACTION", (Icallback) btn_addToEntries);
 	IupSetCallback(btn_cancel, "ACTION", (Icallback) btn_cancel);
 	IupShowXY(namer, IUP_CENTER, IUP_CENTER);
+	return IUP_DEFAULT;
+}
+
+int btn_remove_tags(Ihandle *self){
+	Ihandle *par = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
+	char tags_to_remove[9][2048/9] = {0};
+	for(int q = 0; q<8; q++){
+		tags_to_remove[q][0]='\0';
+	}
+	int curr_count = 0;
+	if(tm2.toggles){
+		for(int i = 0; i<tm2.count; i++){
+			if(tm2.toggles[i] == NULL){
+				continue;
+			}
+			printf("Is tag being removed? %s\n", IupGetAttribute(tm2.toggles[i], "TITLE"));
+			if(strcmp(IupGetAttribute(tm2.toggles[i], "VALUE"), "ON")==0){
+				strcpy(tags_to_remove[curr_count], IupGetAttribute(tm2.toggles[i], "TITLE"));
+				curr_count++;
+				printf("It is being removed\n");
+			}
+		}
+	}
+	if(tm.toggles){
+		for(int i = 0; i < tm.count; i++){
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			char str_build[MAX_SIZE+2048];
+			char title_cpy[MAX_SIZE+2048];
+			strcpy(title_cpy, IupGetAttribute(tm.toggles[i], "TITLE"));
+			char *token = strtok(title_cpy, ",");
+			int tok_count = 0;
+			while(token!=NULL){
+				if(tok_count == 0){
+					strcpy(str_build, token);
+					token = strtok(NULL, ",");
+					tok_count++;
+				} else {
+					int token_valid = 1;
+					for(int j = 0; j<8; j++){
+						if(tags_to_remove[j] == NULL || tags_to_remove[j][0] == '\0'){
+							continue;
+						}
+						if(strcmp(tags_to_remove[j], token)==0){
+							token_valid = 0;
+						}
+					}
+					if(token_valid){
+						strcat(str_build, ",");
+						strcat(str_build, token);
+					}
+					token = strtok(NULL, ",");
+					tok_count++;
+				}
+			}
+			IupSetStrAttribute(tm.toggles[i], "TITLE", str_build);
+		}
+	}
+	if(loaded_list != NULL){
+		fclose(loaded_list);
+	}
+	loaded_list = fopen(curr_txtList, "w");
+	strcat(list_name, "\n");
+	fprintf(loaded_list, list_name);
+	if(tm.toggles){
+		for(int i = 0; i<tm.count; i++){
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			char new_line[MAX_SIZE+2048];
+			strcpy(new_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+			strcat(new_line, "\n");
+			fprintf(loaded_list, new_line);
+		}
+	}
+	IupDestroy(par);
+	returnListEntries();
+	return IUP_DEFAULT;
+}
+
+int btn_remove_tag(Ihandle *self){
+	Ihandle *tag_list, *tag_scroll, *tmp_vbox, *tmp_vbox2, *btn_remove, *btn_cancel;
+	tmp_vbox = IupVbox(NULL);
+	if(tm2.toggles){
+		for(int i=0; i< tm2.count; i++){
+			if(tm2.toggles[i] == NULL){
+				continue;
+			}
+			printf("Does it crash at this moment or after trying to access a toggle?\n");
+			printf("Removing %s toggle\n", IupGetAttribute(tm2.toggles[i], "TITLE"));
+			IupDestroy(tm2.toggles[i]);
+			printf("It's... good?\n");
+			tm2.toggles[i] = NULL;
+		}
+	}
+	int tagged_list_counter = 0;
+	char common_tags[9][2048/9] = {0};
+	for(int q = 0; q < 8; q++){
+		common_tags[q][0]='\0';
+	}
+	if(tm.toggles){
+		int first_entry = 1;
+		for(int i = 0; i<tm.count; i++){
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			if(strcmp(IupGetAttribute(tm.toggles[i], "VALUE"), "ON") == 0){
+				if(first_entry){
+					char curr_line[MAX_SIZE+2048];
+					strcpy(curr_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+					char *token = strtok(curr_line, ",");
+					int counter = 0;
+					while(token != NULL){
+						if(counter == 0){
+							token = strtok(NULL, ",");
+							counter++;
+						} else {
+							if(token != NULL){
+								strcpy(common_tags[counter-1], token);
+							}
+							token = strtok(NULL, ",");
+							counter++;
+						}
+					}
+					first_entry = 0;
+				} else {
+					char curr_line[MAX_SIZE+2048];
+					strcpy(curr_line, IupGetAttribute(tm.toggles[i], "TITLE"));
+					char *token = strtok(curr_line, ",");
+					int counter = 0;
+					int tag_counter = 0;
+					char entry_tags[9][2048/9];
+					while(token != NULL){
+						if(counter == 0){
+							token = strtok(NULL, ",");
+							counter++;
+						} else {
+							int keep_tag = 0;
+							for(int j=0; j<8; j++){
+								if(strcmp(token, common_tags[j])==0){
+									keep_tag = 1;
+									break;
+								}
+							}
+							if(keep_tag){
+								strcpy(entry_tags[tag_counter], token);
+								tag_counter++;
+							}
+							token = strtok(NULL, ",");
+							counter++;
+						}
+					}
+					for(int j = 0; j<8; j++){
+						if(common_tags[j] == NULL){
+							continue;
+						}
+						printf("Tag to be judged: %s\n", common_tags[j]);
+						int remove_tag = 1;
+						for(int k = 0; k < 8; k++){
+							if(common_tags[k] == NULL){
+								continue;
+							}
+							if(strcmp(common_tags[j], entry_tags[k]) == 0){
+								printf("Removing tag: %s\n", common_tags[j]);
+								remove_tag = 0;
+							}
+						}
+						if(remove_tag){
+							common_tags[j][0] = '\0';
+						}
+					}
+				}
+			}
+		}
+	}
+	for(int i = 0; i<8; i++){
+		if(common_tags[i][0] == '\0'){
+			printf("I should see you once\n");
+			continue;
+		}
+		Ihandle *tmp_checkbox = IupToggle(common_tags[i], NULL);
+		IupAppend(tmp_vbox, tmp_checkbox);
+		tm2.toggles[tagged_list_counter] = tmp_checkbox;
+		tagged_list_counter++;
+	}
+	tm2.count = tagged_list_counter;
+	tag_scroll = IupScrollBox(tmp_vbox);
+	btn_remove = IupButton("Remove selected tags", NULL);
+	btn_cancel = IupButton("Cancel", NULL);
+	tmp_vbox2 = IupVbox(tag_scroll, btn_remove, btn_cancel, NULL);
+	tag_list = IupDialog(tmp_vbox2);
+	IupSetAttribute(tag_list, "TITLE", "Remove tags");
+	IupSetAttribute(tag_list, "SIZE", "QUARTERxQUATER");
+	IupSetAttribute(tmp_vbox2, "ALIGNMENT", "ACENTER");
+	IupSetAttribute(btn_cancel, "PAR_DLG", (char *) tag_list);
+	IupSetCallback(btn_cancel, "ACTION", (Icallback)btn_cancel);
+	IupSetAttribute(btn_remove, "PAR_DLG", (char *)tag_list);
+	IupSetCallback(btn_remove, "ACTION", (Icallback)btn_remove_tags);
+	IupShowXY(tag_list, IUP_CENTER, IUP_CENTER);
 	return IUP_DEFAULT;
 }
 
@@ -678,6 +879,7 @@ int main (int argc, char **argv){
 	IupSetAttribute(item_save, "KEY", "S");
 	file_menu = IupMenu(item_open, item_save, NULL);
 	sub1_menu = IupSubmenu("File", file_menu);
+	button_remove_tag = IupButton("Remove tags from selected entries", NULL);
 	menu = IupMenu(sub1_menu, NULL);
 	IupSetHandle("main_menu", menu);
 	button = IupButton("Add File To List", NULL);
@@ -686,7 +888,7 @@ int main (int argc, char **argv){
 	button_remove_entries = IupButton("Remove selected entries", NULL);
 	button_add_tag = IupButton("Add tag to selected entries", NULL);
 	printf("Setting up the vbox...\n");
-	vbox=IupVbox(heading, list_head,  tm.list_container, button, button_dir, button_add_tag, button_remove_entries, button_list_name, NULL);
+	vbox=IupVbox(heading, list_head,  tm.list_container, button, button_dir, button_add_tag, button_remove_entries, button_remove_tag, button_list_name, NULL);
 	dlg=IupDialog(vbox);
 	IupSetAttribute(dlg, "MENU", "main_menu");
 	IupSetAttribute(dlg, "TITLE", "GUTS");
@@ -701,6 +903,7 @@ int main (int argc, char **argv){
 	IupSetCallback(item_save, "ACTION", (Icallback) btn_save_file);
 	IupSetCallback(button_list_name, "ACTION", (Icallback) btn_name_list);
 	IupSetCallback(button_remove_entries, "ACTION", (Icallback)btn_remove_item);
+	IupSetCallback(button_remove_tag, "ACTION", (Icallback)btn_remove_tag);
 	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);
 	IupMainLoop();
 	if(remove(curr_txtList)!=0){
