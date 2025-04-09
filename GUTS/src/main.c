@@ -27,7 +27,7 @@ FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
 char list_name[MAX_SIZE];
-Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_tag, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save, *button_add_tag;
+Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_tag, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save, *button_add_tag, *item_new;
 
 typedef struct{
 	Ihandle *toggles[MAX_ENTRIES];
@@ -38,6 +38,7 @@ typedef struct{
 
 ToggleManager tm = {0};
 ToggleManager tm2 = {0};
+char uts_util_path[MAX_SIZE];
 
 void returnListEntries(){
 	if(loaded_list != NULL){
@@ -190,7 +191,6 @@ int btn_add_file(Ihandle *self){
 	printf("Preparing to destroy...\n");
 	IupDestroy(temp_dlg);
 	printf("Destroyed\n");
-	return IUP_DEFAULT;
 }
 
 int btn_addFileToList(Ihandle *self){
@@ -267,7 +267,6 @@ int btn_add_directory(Ihandle *self){
 	printf("Preparing to destroy...\n");
 	IupDestroy(temp_dlg);
 	printf("Destroyed\n");
-	return IUP_DEFAULT;
 }
 
 int btn_addDirectoryToList(Ihandle *self){
@@ -376,8 +375,11 @@ int btn_save_file(Ihandle *self){
 				fclose(loaded_list);
 			}
 			strcpy(curr_list,IupGetAttribute(file_dlg, "VALUE"));
+			char *dot = strrchr(curr_list, '.');
+			if(dot && !strcmp(curr_list, ".tfo")){
+				strcat(curr_list, ".tfo");
+			}
 			char line[MAX_SIZE+2048];
-			printf("We make our stand\n");
 			strcpy(line, list_name);
 			strcat(line, "\n");
 			FILE *temp_list = fopen(curr_list, "wb");
@@ -813,6 +815,25 @@ int btn_remove_tag(Ihandle *self){
 	return IUP_DEFAULT;
 }
 
+int btn_new_list(Ihandle *self){
+	if(loaded_list != NULL){
+		fclose(loaded_list);
+	}
+	if(remove(curr_txtList)!=0){
+		printf("Error removing\n");
+	}
+	char temp_file[MAX_SIZE];
+	strcpy(temp_file, uts_util_path);
+	strcat(temp_file, "/temp.tfot");
+	loaded_list = fopen(temp_file, "w");
+	char new_head[MAX_SIZE+2048] = "NEW_LIST\n";
+	strcpy(list_name, new_head);
+	fprintf(loaded_list, new_head);
+	strcpy(curr_txtList, temp_file);
+	returnListEntries();
+	return IUP_DEFAULT;
+}
+
 int main (int argc, char **argv){
 	char utsFilePath[MAX_SIZE]="";
 	printf("Finding main file...\n");
@@ -844,6 +865,7 @@ int main (int argc, char **argv){
 		strcat(success_message, utsFilePath);
 		IupMessage("Success", success_message);	
 	}
+	strcpy(uts_util_path, utsFilePath);
 	printf("Found the file correctly\n");
  	strcat(utsFilePath, "/main_list.tfo");
 	if(!isFileCreated(utsFilePath)){
@@ -870,6 +892,7 @@ int main (int argc, char **argv){
 	heading = IupLabel("Welcome to GUTS, choose your options:");
 	item_open = IupItem("Open", NULL);
 	item_save = IupItem("Save", NULL);
+	item_new = IupItem("New", NULL);
 	list_head = IupLabel("");
 	tm.vbox = IupVbox(NULL);
 	tm.list_container = IupScrollBox(tm.vbox);
@@ -877,7 +900,8 @@ int main (int argc, char **argv){
 	returnListEntries();
 	IupSetAttribute(item_open, "KEY", "O");
 	IupSetAttribute(item_save, "KEY", "S");
-	file_menu = IupMenu(item_open, item_save, NULL);
+	IupSetAttribute(item_new, "KEY", "N");
+	file_menu = IupMenu(item_new, item_open, item_save, NULL);
 	sub1_menu = IupSubmenu("File", file_menu);
 	button_remove_tag = IupButton("Remove tags from selected entries", NULL);
 	menu = IupMenu(sub1_menu, NULL);
@@ -898,6 +922,7 @@ int main (int argc, char **argv){
 	IupSetAttribute(vbox, "MARGIN", "10x10");
 	IupSetCallback(button_add_tag, "ACTION", (Icallback) btn_add_tag);
 	IupSetCallback(item_open, "ACTION", (Icallback) btn_open_file);
+	IupSetCallback(item_new, "ACTION", (Icallback) btn_new_list);
 	IupSetCallback(button, "ACTION", (Icallback) btn_addFileToList);
 	IupSetCallback(button_dir, "ACTION", (Icallback) btn_addDirectoryToList);
 	IupSetCallback(item_save, "ACTION", (Icallback) btn_save_file);
