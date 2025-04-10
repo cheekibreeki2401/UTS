@@ -7,7 +7,7 @@
 
 - [ ] Create a makefile for this program
 
-- [ ] Create the Graphical Universal Tagging System (GUTS)
+- [x] Create the Graphical Universal Tagging System (GUTS)
 
 <h2>Welcome to UTS</h2>
 UTS is a program designed to make the navigation of file systems and finding particular files easier by using simple lists combined with tags for your conveniance. Create lists of files or directories you want to keep track of in individual lists which then can be further seperated for up to 10 tags. Currently, the commandline version of the program <strong>CUTS</strong> has been created for linux systems, with further improvements on the way.
