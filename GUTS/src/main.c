@@ -27,7 +27,7 @@ FILE *loaded_listt;
 int curr_list_line_num;
 char *listContents;
 char list_name[MAX_SIZE];
-Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_tag, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save, *button_add_tag, *item_new;
+Ihandle *dlg, *button, *button_dir, *button_list_name, *button_remove_tag, *button_remove_entries, *vbox, *heading, *list_head, *list_content, *item_open, *file_menu, *sub1_menu, *menu, *item_save, *button_add_tag, *item_new, *button_select_all, *button_select_none;
 
 typedef struct{
 	Ihandle *toggles[MAX_ENTRIES];
@@ -69,17 +69,13 @@ void returnListEntries(){
 		}
 		counter++;
 	}
+	printf("Successfully returned list\n");
 	IupMap(tm.vbox);
 	IupRefresh(tm.vbox);
 	IupMap(tm.list_container);
 	IupRefresh(tm.list_container);
 	IupMap(dlg);
 	IupRefresh(dlg);
-	return;
-}
-
-void returnFilteredListEntries(){
-	//TODO: Code to make a filtered list to explore through
 	return;
 }
 
@@ -154,6 +150,7 @@ int btn_chooseFileToAdd(Ihandle *self){
 	Ihandle *parent = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
 	file_dlg = IupFileDlg();
 	IupSetAttributes(file_dlg, "DIALOGTYPE=OPEN, TITLE=\"Choose your file\"");
+	IupSetAttribute(file_dlg, "DIRECTORY", uts_util_path);
 	IupPopup(file_dlg, IUP_CENTER, IUP_CENTER);
 	switch(IupGetInt(file_dlg, "STATUS")){
 		case 0:
@@ -222,6 +219,7 @@ int btn_chooseDirectoryToAdd(Ihandle *self){
 	Ihandle *parent = (Ihandle *)IupGetAttribute(self, "PAR_DLG");
 	file_dlg = IupFileDlg();
 	IupSetAttributes(file_dlg, "DIALOGTYPE=DIR, TITLE=\"Choose your file\"");
+	IupSetAttribute(file_dlg, "DIRECTORY", uts_util_path);
 	IupPopup(file_dlg, IUP_CENTER, IUP_CENTER);
 	switch(IupGetInt(file_dlg, "STATUS")){
 		case 0:
@@ -347,6 +345,7 @@ int btn_open_file(Ihandle *self){
 	filedlg= IupFileDlg();
 	IupSetAttributes(filedlg, "DIALOGTYPE=OPEN, TITLE=\"Open .tfo file\"");
 	IupSetAttributes(filedlg, "FILTER=\"*.tfo\", FILTERINFO=\"Tagged File Output Files\"");
+	IupSetAttribute(filedlg, "DIRECTORY", uts_util_path);
 	IupPopup(filedlg, IUP_CENTER, IUP_CENTER);
 	switch(IupGetInt(filedlg, "STATUS")){
 		case 0:
@@ -368,6 +367,7 @@ int btn_save_file(Ihandle *self){
 	file_dlg = IupFileDlg();
 	IupSetAttributes(file_dlg, "DIALOGTYPE=SAVE, TITLE=\"Save .tfo file\"");
 	IupSetAttributes(file_dlg, "FILTER = \"*.tfo\", FILTERINFO=\"Tagged File Object\"");
+	IupSetAttribute(file_dlg, "DIRECTORY", uts_util_path);
 	IupPopup(file_dlg, IUP_CENTER, IUP_CENTER);
 	switch(IupGetInt(file_dlg, "STATUS")){
 		case 1:
@@ -376,7 +376,8 @@ int btn_save_file(Ihandle *self){
 			}
 			strcpy(curr_list,IupGetAttribute(file_dlg, "VALUE"));
 			char *dot = strrchr(curr_list, '.');
-			if(dot && !strcmp(curr_list, ".tfo")){
+			if(dot == NULL || !strcmp(dot, ".tfo")){
+				printf("Adding .tfo");
 				strcat(curr_list, ".tfo");
 			}
 			char line[MAX_SIZE+2048];
@@ -834,6 +835,28 @@ int btn_new_list(Ihandle *self){
 	return IUP_DEFAULT;
 }
 
+int btn_select_all(Ihandle *self){
+	if(tm.toggles){
+		for(int i = 0; i < tm.count; i++){
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			IupSetAttribute(tm.toggles[i], "VALUE", "ON");
+		}
+	}
+}
+
+int btn_deselect_all(Ihandle *self){
+	if(tm.toggles){
+		for(int i = 0; i < tm.count; i++){
+			if(tm.toggles[i] == NULL){
+				continue;
+			}
+			IupSetAttribute(tm.toggles[i], "VALUE", "OFF");
+		}
+	}
+}
+
 int main (int argc, char **argv){
 	char utsFilePath[MAX_SIZE]="";
 	printf("Finding main file...\n");
@@ -904,6 +927,8 @@ int main (int argc, char **argv){
 	file_menu = IupMenu(item_new, item_open, item_save, NULL);
 	sub1_menu = IupSubmenu("File", file_menu);
 	button_remove_tag = IupButton("Remove tags from selected entries", NULL);
+	button_select_all = IupButton("Select all", NULL);
+	button_select_none = IupButton("Select none", NULL);
 	menu = IupMenu(sub1_menu, NULL);
 	IupSetHandle("main_menu", menu);
 	button = IupButton("Add File To List", NULL);
@@ -912,7 +937,7 @@ int main (int argc, char **argv){
 	button_remove_entries = IupButton("Remove selected entries", NULL);
 	button_add_tag = IupButton("Add tag to selected entries", NULL);
 	printf("Setting up the vbox...\n");
-	vbox=IupVbox(heading, list_head,  tm.list_container, button, button_dir, button_add_tag, button_remove_entries, button_remove_tag, button_list_name, NULL);
+	vbox=IupVbox(heading, list_head,  tm.list_container, button_select_all, button_select_none, button, button_dir, button_add_tag, button_remove_entries, button_remove_tag, button_list_name, NULL);
 	dlg=IupDialog(vbox);
 	IupSetAttribute(dlg, "MENU", "main_menu");
 	IupSetAttribute(dlg, "TITLE", "GUTS");
@@ -929,6 +954,8 @@ int main (int argc, char **argv){
 	IupSetCallback(button_list_name, "ACTION", (Icallback) btn_name_list);
 	IupSetCallback(button_remove_entries, "ACTION", (Icallback)btn_remove_item);
 	IupSetCallback(button_remove_tag, "ACTION", (Icallback)btn_remove_tag);
+	IupSetCallback(button_select_all, "ACTION", (Icallback)btn_select_all);
+	IupSetCallback(button_select_none, "ACTION", (Icallback)btn_deselect_all);
 	IupShowXY(dlg, IUP_CENTER, IUP_CENTER);
 	IupMainLoop();
 	if(remove(curr_txtList)!=0){
