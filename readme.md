@@ -13,7 +13,7 @@
 UTS is a program designed to make the navigation of file systems and finding particular files easier by using simple lists combined with tags for your conveniance. Create lists of files or directories you want to keep track of in individual lists which then can be further seperated for up to 10 tags. Enjoy both <strong>CUTS</strong> (Command line Universal Tagging System) and <strong>GUTS</strong> (Graphical Universal Tagging System) for your needs.
 <h2>How to use</h2>
 <ol>
-    <li>Git clone the directory for your desired version of the UTS. For this example, we will use CUTT, which can be done by using this command:</li>
+    <li>Git clone the directory for your desired version of the UTS. For this example, we will use CUTS, which can be done by using this command:</li>
 
         >    git clone https://github.com/cheekibreeki2401/UTS/tree/master/CUTS
     
