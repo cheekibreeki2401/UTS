@@ -7,9 +7,9 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <ctype.h>
-#include "headers/curUser.h"
-#include "headers/folderCheck.h"
-#include "headers/fileCheck.h"
+#include "../include/curUser.h"
+#include "../include/folderCheck.h"
+#include "../include/fileCheck.h"
 
 #ifdef __linux__
 #define MAX_SIZE 4096

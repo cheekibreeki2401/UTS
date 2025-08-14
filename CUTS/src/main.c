@@ -6,9 +6,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
-#include "headers/fileCheck.h"
-#include "headers/folderCheck.h"
-#include "headers/curUser.h"
+#include "../include/fileCheck.h"
+#include "../include/folderCheck.h"
+#include "../include/curUser.h"
 
 #ifdef __linux__
 #define MAX_SIZE 4096
@@ -40,7 +40,7 @@ int getMaxListIndex(taggedFile *head);
 void removeByIndex(taggedFile *head, int index);
 void writeTextFile();
 void writeBinaryFile();
-void addTag();
+void addTag(taggedFile *head, int index);
 void flush_chars();
 void addFileRecursive(char *directory);
 taggedFile *createHead();
@@ -359,7 +359,7 @@ void checkList(taggedFile *head){
 
 void editList()
 {
-	char edit_options [] = "\n(A)dd a file to list\n(R)emove a file from the list\n(I)nsert new tag to file\n(D)elete a tag from a file or list\n(N)ame list\n(Q)uit back to main menu\n\nEnter your choice: ";
+	char edit_options [] = "\n(A)dd a file to list\n(R)emove a file from the list\n(I)nsert new tag to file\n(D)elete a tag from a file or list\n(T)itle list\n(Q)uit back to main menu\n\nEnter your choice: ";
 	printf("\nLoading list contents...\n");
 	printListContents(0);
 	printf("\nList contents loaded successfully\n");
@@ -376,7 +376,7 @@ void editList()
 			newTag();
 		} else if(toupper(choice)== 'D'){
 			deleteTag();
-		} else if(toupper(choice) == 'N'){
+		} else if(toupper(choice) == 'T'){
 			renameList();
 		} else if(toupper(choice) != 'Q') {
 			printf("Not a valid choice, please try again\n");
